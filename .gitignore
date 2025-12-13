@@ -59,7 +59,11 @@ dkms.conf
 
 # dirs to ignore
 
-/build
+build
+.cache
 
 # nvim stuff
 .nvimlog
+
+
+

@@ -1,0 +1,15 @@
+CompileFlags:
+  CompilationDatabase: kernel
+  Remove:
+    - -mrecord-mcount
+    - -mpreferred-stack-boundary=3
+    - -fno-allow-store-data-races
+    - -mindirect-branch-register
+    - -mindirect-branch=thunk-extern
+    - -fsanitize=bounds-strict
+    - -fconserve-stack
+
+Diagnostics:
+  Suppress:
+    - variadic_macro_arguments_compat
+

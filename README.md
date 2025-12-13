@@ -1,119 +1,140 @@
+# Linux Kernel Module – Driver de Joystick (Exemplo)
 
-# Projeto de Módulo de Kernel (LKM)
-
-Este projeto contém um **módulo de kernel**.  
-Usamos **CMake** apenas para organizar o projeto e gerar suporte ao editor (LSP/clangd), enquanto a **compilação real é feita pelo Make/Kbuild**.
+Este repositório contém um **módulo de kernel Linux (LKM)** desenvolvido para fins de estudo.  
+O projeto já vem configurado para facilitar **compilação**, **carregamento** e **uso em editores** (VS Code / Neovim).
 
 ---
 
-## Estrutura do projeto
+## 📋 Requisitos
 
+- Linux (testado em Ubuntu)
+- Headers do kernel instalados
+- `make`
+- GCC
+- (Opcional, mas recomendado) `bear` para suporte a clangd
+
+Para instalar os headers do kernel:
+
+```bash
+sudo apt install linux-headers-$(uname -r)
+````
+
+Para instalar o Bear (opcional):
+
+```bash
+sudo apt install bear
 ```
 
+---
+
+## 📁 Estrutura do projeto
+
+```text
 .
-├── build/                # Diretório de build
-├── CMakeLists.txt        # Arquivo CMake principal
-├── headers/              # Headers compartilhados
-├── kernel/
-│   ├── Makefile          # Kbuild
-│   └── my_driver.c       # Código do módulo
-├── LICENSE
-└── README.md
-
-````
+├── Makefile
+├── compile_commands.json        (gerado automaticamente)
+├── .clangd                      (configuração do clangd)
+└── kernel/
+    ├── testLKM.c                (código do módulo)
+    ├── Makefile
+    └── compile_commands.json -> ../compile_commands.json
+```
 
 ---
 
-## Pré-requisitos
+## ⚙️ Como compilar o módulo
 
-- Linux com headers do kernel instalados:
-
-```bash
-sudo apt install build-essential linux-headers-$(uname -r)
-````
-
-* CMake 3.16 ou superior
-* make
-
----
-
-## Compilando o módulo
-
-1. Crie o diretório de build e entre nele:
-
-```bash
-mkdir -p build
-cd build
-```
-
-2. Rode o CMake para gerar os targets:
-
-```bash
-cmake ..
-```
-
-> Isso cria o target `kernel_module` e também `kernel_module_clean`.
-> O `kernel_module` já é marcado como `ALL`, então **apenas `make` já compila o módulo**.
-
-3. Compile o módulo:
+Na raiz do projeto, execute:
 
 ```bash
 make
 ```
 
-> O arquivo resultante será `kernel/my_driver.ko`.
+Isso irá:
+
+* Compilar o módulo do kernel
+* Gerar `compile_commands.json` (se o Bear estiver instalado)
+* Preparar o projeto para funcionar corretamente no editor
+
+O arquivo `.ko` será gerado dentro do diretório `kernel/`.
 
 ---
 
-## Limpando o build
+## 📦 Como carregar o módulo
 
-Para limpar arquivos gerados pelo kernel:
+Entre no diretório `kernel`:
 
 ```bash
-make kernel_module_clean
+cd kernel
 ```
 
-> Remove `.ko`, `.o` e outros arquivos intermediários.
-
----
-
-## Carregando e descarregando o módulo
+Carregue o módulo:
 
 ```bash
-# Carregar o módulo
-sudo insmod kernel/my_driver.ko
+sudo insmod testLKM.ko
+```
 
-# Ver mensagens do kernel
+Verifique se foi carregado:
+
+```bash
+lsmod | grep testLKM
+```
+
+Ou veja as mensagens do kernel:
+
+```bash
 dmesg | tail
-
-# Descarregar o módulo
-sudo rmmod my_driver
 ```
 
 ---
 
-## Integração com IDE / LSP (opcional)
+## ❌ Como remover o módulo
 
-Se você usa **clangd** ou VSCode:
+```bash
+sudo rmmod testLKM
+```
 
-* CMake gera automaticamente `compile_commands.json` no diretório `build/`.
-* Isso permite:
+E confira novamente:
 
-  * Autocompletar
-  * Navegação entre headers
-  * Diagnóstico em tempo real
-
-Basta abrir o diretório `build/` no editor.
+```bash
+lsmod | grep testLKM
+```
 
 ---
 
-## Observações
+## 🧹 Limpar arquivos de build
 
-* Todo o código do módulo fica em `kernel/`.
-* Headers compartilhados ficam em `headers/`.
-* O CMake **não compila o módulo diretamente**, ele apenas organiza a execução do Make/Kbuild e facilita o LSP.
+Na raiz do projeto:
 
+```bash
+make clean
+```
 
+---
 
+## 🧠 Dicas úteis
+
+* Sempre use `dmesg` para depurar mensagens do kernel
+* Se o módulo não carregar, verifique erros com:
+
+  ```bash
+  dmesg | tail -n 50
+  ```
+* O projeto já está configurado para funcionar com **clangd** em:
+
+  * VS Code
+  * Neovim
+  * Outros editores compatíveis
+
+---
+
+## ⚠️ Aviso
+
+Este módulo é apenas para **uso educacional**.
+Carregar módulos de kernel incorretos pode travar o sistema.
+
+Use por sua conta e risco.
+
+```
 
 
