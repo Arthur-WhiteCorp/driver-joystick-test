@@ -126,15 +126,6 @@ make clean
   * Neovim
   * Outros editores compatíveis
 
----
 
-## ⚠️ Aviso
-
-Este módulo é apenas para **uso educacional**.
-Carregar módulos de kernel incorretos pode travar o sistema.
-
-Use por sua conta e risco.
-
-```
 
 
