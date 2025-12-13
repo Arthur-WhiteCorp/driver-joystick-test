@@ -113,7 +113,7 @@ Basta abrir o diretório `build/` no editor.
 * Headers compartilhados ficam em `headers/`.
 * O CMake **não compila o módulo diretamente**, ele apenas organiza a execução do Make/Kbuild e facilita o LSP.
 
-```
 
----
+
+
 
