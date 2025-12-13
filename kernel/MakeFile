@@ -1,0 +1,5 @@
+obj-m := my_driver.o
+
+# Add your project headers
+ccflags-y += -I$(src)/../headers
+
