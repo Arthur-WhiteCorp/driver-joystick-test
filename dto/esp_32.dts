@@ -1,0 +1,17 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			joy_stick:  joystick@0 {
+				compatible = "equipe03,esp32_controller";
+				status = "okay";
+				string_var = "Olá, DT do joystick funcionando!!"; 
+			};
+		};
+	};
+
+};
