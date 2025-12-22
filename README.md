@@ -34,8 +34,9 @@ sudo apt install bear
 ├── Makefile
 ├── compile_commands.json        (gerado automaticamente)
 ├── .clangd                      (configuração do clangd)
-└── kernel/
-    ├── testLKM.c                (código do módulo)
+├── esp32-dto/                   (device tree overlay para descoberta do ESP32)
+└── kernel/                      (código do módulo)
+    ├── testLKM.c
     ├── Makefile
     └── compile_commands.json -> ../compile_commands.json
 ```

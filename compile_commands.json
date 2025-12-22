@@ -2,7 +2,7 @@
   {
     "arguments": [
       "/usr/bin/gcc-13",
-      "-Wp,-MMD,./.testLKM.o.d",
+      "-Wp,-MMD,./.joystick_driver.o.d",
       "-nostdinc",
       "-I/usr/src/linux-headers-6.14.0-37-generic/arch/x86/include",
       "-I/usr/src/linux-headers-6.14.0-37-generic/arch/x86/include/generated",
@@ -119,22 +119,22 @@
       "-fsanitize=bool",
       "-fsanitize=enum",
       "-DMODULE",
-      "-DKBUILD_BASENAME=\"testLKM\"",
-      "-DKBUILD_MODNAME=\"testLKM\"",
-      "-D__KBUILD_MODNAME=kmod_testLKM",
+      "-DKBUILD_BASENAME=\"joystick_driver\"",
+      "-DKBUILD_MODNAME=\"joystick_driver\"",
+      "-D__KBUILD_MODNAME=kmod_joystick_driver",
       "-c",
       "-o",
-      "testLKM.o",
-      "testLKM.c"
+      "joystick_driver.o",
+      "joystick_driver.c"
     ],
     "directory": "/home/arthur/git/driver-joystick-test/kernel",
-    "file": "/home/arthur/git/driver-joystick-test/kernel/testLKM.c",
-    "output": "/home/arthur/git/driver-joystick-test/kernel/testLKM.o"
+    "file": "/home/arthur/git/driver-joystick-test/kernel/joystick_driver.c",
+    "output": "/home/arthur/git/driver-joystick-test/kernel/joystick_driver.o"
   },
   {
     "arguments": [
       "/usr/bin/gcc-13",
-      "-Wp,-MMD,./.testLKM.mod.o.d",
+      "-Wp,-MMD,./.joystick_driver.mod.o.d",
       "-nostdinc",
       "-I/usr/src/linux-headers-6.14.0-37-generic/arch/x86/include",
       "-I/usr/src/linux-headers-6.14.0-37-generic/arch/x86/include/generated",
@@ -250,17 +250,17 @@
       "-fsanitize=bool",
       "-fsanitize=enum",
       "-DMODULE",
-      "-DKBUILD_BASENAME=\"testLKM.mod\"",
-      "-DKBUILD_MODNAME=\"testLKM\"",
-      "-D__KBUILD_MODNAME=kmod_testLKM",
+      "-DKBUILD_BASENAME=\"joystick_driver.mod\"",
+      "-DKBUILD_MODNAME=\"joystick_driver\"",
+      "-D__KBUILD_MODNAME=kmod_joystick_driver",
       "-c",
       "-o",
-      "testLKM.mod.o",
-      "testLKM.mod.c"
+      "joystick_driver.mod.o",
+      "joystick_driver.mod.c"
     ],
     "directory": "/home/arthur/git/driver-joystick-test/kernel",
-    "file": "/home/arthur/git/driver-joystick-test/kernel/testLKM.mod.c",
-    "output": "/home/arthur/git/driver-joystick-test/kernel/testLKM.mod.o"
+    "file": "/home/arthur/git/driver-joystick-test/kernel/joystick_driver.mod.c",
+    "output": "/home/arthur/git/driver-joystick-test/kernel/joystick_driver.mod.o"
   },
   {
     "arguments": [

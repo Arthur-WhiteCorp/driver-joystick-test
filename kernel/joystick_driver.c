@@ -3,7 +3,6 @@
 #include <linux/input.h>
 #include <linux/init.h>
 
-#define MODULE_NAME "SSNESJ" // nome para debug
 
 MODULE_LICENSE("GPL");                                     // Tipo de licença -- afeta o comportamento do tempo de execução
 MODULE_AUTHOR("Arthur Silva Matias");                                 // Autor -- visivel quando usado o modinfo
