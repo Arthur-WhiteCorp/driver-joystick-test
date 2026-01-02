@@ -9,8 +9,10 @@ O projeto já vem configurado para facilitar **compilação**, **carregamento** 
 
 - Linux (testado em Ubuntu)
 - Headers do kernel instalados
-- `make`
+- Kernel do android 14
 - GCC
+- gcc-aarch64-linux-gnu (Cross-Compiler)
+- `make`
 - (Opcional, mas recomendado) `bear` para suporte a clangd
 
 Para instalar os headers do kernel:
@@ -18,7 +20,15 @@ Para instalar os headers do kernel:
 ```bash
 sudo apt install linux-headers-$(uname -r)
 ````
+Para obter o kernel aosp utilizado:
 
+```bash
+cd ~
+mkdir Kernel-Aosp14
+cd Kernel-Aosp14
+repo init --depth=1 -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1
+repo sync --force-sync --no-clone-bundle --no-tags -j$(nproc)
+````
 Para compilar o Driver para AOSP:
 ```bash
 sudo apt-get install gcc-aarch64-linux-gnu
@@ -139,13 +149,13 @@ make clean
 🚀Carregue o módulo:
 
 ```bash
-sudo insmod testLKM.ko
+sudo insmod <module_name.ko>
 ```
 
 Verifique se foi carregado:
 
 ```bash
-lsmod | grep testLKM
+lsmod | grep <module_name>
 ```
 
 Ou veja as mensagens do kernel:

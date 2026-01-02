@@ -15,7 +15,7 @@ BEAR := $(shell command -v bear 2>/dev/null)
 .PHONY: all clean aosp config aosp-full aosp-kernel
 
 
-/* Regras de compilação para x86 */
+# Regras de compilação para x86 
 
 all:
 ifdef BEAR
@@ -29,13 +29,13 @@ else
 endif
 
 
-/* Regras de compilação para aosp */
+# Regras de compilação para aosp 
 
 # Configuração do kernel aosp
 config:
 	cd $(AOSP_KERNEL) && \
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) defconfig && \
-	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) prepare
+	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules_prepare
 
 # Compila todos os módulos do kernel AOSP (incluindo exports)
 aosp-kernel: config
