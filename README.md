@@ -34,7 +34,7 @@ sudo apt install bear
 ├── Makefile
 ├── compile_commands.json        (gerado automaticamente)
 ├── .clangd                      (configuração do clangd)
-├── esp32-dto/                   (device tree overlay para descoberta do ESP32)
+├── dto/                   (device tree overlay para o joystick do ESP32)
 └── kernel/                      (código do módulo)
     ├── testLKM.c
     ├── Makefile
@@ -43,33 +43,97 @@ sudo apt install bear
 
 ---
 
-## ⚙️ Como compilar o módulo
+# ⚙️ Como compilar o módulo
 
-Na raiz do projeto, execute:
+Este projeto suporta duas plataformas de compilação:
+
+## 🖥️ Para Linux Nativo (x86_64)
+
+Para compilar o módulo na sua máquina de desenvolvimento (testes rápidos):
 
 ```bash
 make
 ```
 
-Isso irá:
-
-* Compilar o módulo do kernel
-* Gerar `compile_commands.json` (se o Bear estiver instalado)
+**Isso irá:**
+* Compilar o módulo do kernel para sua distribuição atual
+* Gerar `compile_commands.json` (se o Bear estiver instalado) para integração com IDEs
 * Preparar o projeto para funcionar corretamente no editor
 
-O arquivo `.ko` será gerado dentro do diretório `kernel/`.
+**Resultado:** O arquivo `.ko` será gerado dentro do diretório `kernel/`.
 
 ---
 
-## 📦 Como carregar o módulo
+## 📱 Para AOSP (Android - ARM64)
 
-Entre no diretório `kernel`:
+Para compilar para dispositivos Android, primeiro configure o caminho do kernel no Makefile:
 
-```bash
-cd kernel
+```makefile
+# Atualize este caminho para onde seu kernel AOSP está localizado
+AOSP_KERNEL = /caminho/para/seu/kernel-aosp
 ```
 
-Carregue o módulo:
+### 🚀 Fluxo de Trabalho Recomendado:
+
+#### 1. **Configuração Inicial** (apenas primeira vez ou após mudanças no kernel)
+```bash
+make aosp-full
+```
+**O que faz:**
+- Configura o kernel AOSP com `defconfig`
+- Compila **todos os módulos do kernel** (necessário uma vez)
+- Compila **nosso driver específico**
+
+#### 2. **Desenvolvimento Iterativo** (uso diário - SUPER RÁPIDO)
+```bash
+make aosp
+```
+**O que faz:**
+- Compila **apenas nosso driver** (presume kernel já compilado)
+- Ideal para ciclo rápido de desenvolvimento/teste
+- Mantém todas as configurações anteriores
+
+### 🔧 Comandos Avançados:
+
+```bash
+# Apenas configurar o kernel (sem compilar)
+make config
+
+# Compilar apenas os módulos do kernel AOSP (sem nosso driver)
+make aosp-kernel
+
+# Limpar arquivos de compilação
+make clean
+```
+
+---
+
+## 🎯 Resumo do Fluxo para a Equipe:
+
+| Quando usar | Comando | Tempo | Recomendado para |
+|-------------|---------|-------|------------------|
+| **Primeira configuração** | `make aosp-full` | ⏱️ Longo | Integração inicial |
+| **Desenvolvimento diário** | `make aosp` | ⚡ Instantâneo | Iteração rápida |
+| **Testes locais** | `make` | 🚀 Rápido | Debug no PC |
+| **Problemas de build** | `make aosp-full` | ⏱️ Longo | Resolver dependências |
+
+---
+
+## 📝 Notas Importantes:
+
+1. **Para desenvolvimento Android**, use sempre `make aosp` após a configuração inicial
+2. O comando `make` padrão é apenas para testes rápidos no PC
+3. Certifique-se de ter a toolchain ARM64 instalada:
+   ```bash
+   sudo apt-get install gcc-aarch64-linux-gnu
+   ```
+4. Mantenha o caminho do kernel AOSP atualizado no Makefile
+
+
+**Dica da equipe:** Após o `make aosp-full` inicial, use sempre `make aosp` para builds rápidos durante o desenvolvimento! 
+
+---
+🚀Carregue o módulo:
 
 ```bash
 sudo insmod testLKM.ko

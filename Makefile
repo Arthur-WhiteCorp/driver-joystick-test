@@ -12,7 +12,10 @@ AOSP_KERNEL = /home/arthur/Kernel-Aosp14/common
 
 BEAR := $(shell command -v bear 2>/dev/null)
 
-.PHONY: all clean aosp config
+.PHONY: all clean aosp config aosp-full aosp-kernel
+
+
+/* Regras de compilação para x86 */
 
 all:
 ifdef BEAR
@@ -26,6 +29,8 @@ else
 endif
 
 
+/* Regras de compilação para aosp */
+
 # Configuração do kernel aosp
 config:
 	cd $(AOSP_KERNEL) && \
@@ -33,19 +38,20 @@ config:
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) prepare
 
 # Compila todos os módulos do kernel AOSP (incluindo exports)
-aosp-kernel:
+aosp-kernel: config
 	cd $(AOSP_KERNEL) && \
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules
 
-#Compilação para aosp junto com o kernel
-aosp-full: config aosp-kernel 
+# Compilação para aosp junto com o kernel
+aosp-full: aosp-kernel 
 	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
 		M=$(PWD)/kernel \
 		modules
+
 #Compila somente o driver se o kernel já está compilado
-aosp: config
+aosp: 
 	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
