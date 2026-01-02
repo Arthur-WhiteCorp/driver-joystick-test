@@ -19,11 +19,17 @@ Para instalar os headers do kernel:
 sudo apt install linux-headers-$(uname -r)
 ````
 
+Para compilar o Driver para AOSP:
+```bash
+sudo apt-get install gcc-aarch64-linux-gnu
+```
+
 Para instalar o Bear (opcional):
 
 ```bash
 sudo apt install bear
 ```
+
 
 ---
 
@@ -43,11 +49,11 @@ sudo apt install bear
 
 ---
 
-# ⚙️ Como compilar o módulo
+## ⚙️ Como compilar o módulo
 
 Este projeto suporta duas plataformas de compilação:
 
-## 🖥️ Para Linux Nativo (x86_64)
+### 🖥️ Para Linux Nativo (x86_64)
 
 Para compilar o módulo na sua máquina de desenvolvimento (testes rápidos):
 
@@ -64,7 +70,7 @@ make
 
 ---
 
-## 📱 Para AOSP (Android - ARM64)
+### 📱 Para AOSP (Android - ARM64)
 
 Para compilar para dispositivos Android, primeiro configure o caminho do kernel no Makefile:
 
@@ -129,9 +135,6 @@ make clean
    ```
 4. Mantenha o caminho do kernel AOSP atualizado no Makefile
 
-
-**Dica da equipe:** Após o `make aosp-full` inicial, use sempre `make aosp` para builds rápidos durante o desenvolvimento! 
-
 ---
 🚀Carregue o módulo:
 
@@ -179,6 +182,7 @@ make clean
 
 ## 🧠 Dicas úteis
 
+* Após o `make aosp-full` inicial, use sempre `make aosp` para builds rápidos durante o desenvolvimento! 
 * Sempre use `dmesg` para depurar mensagens do kernel
 * Se o módulo não carregar, verifique erros com:
 
