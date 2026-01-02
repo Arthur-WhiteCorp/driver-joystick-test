@@ -14,4 +14,9 @@
 			};
 		};
 	};
+	__overrides__ {
+        latch_pin = <&joy_stick>, "latch-gpios:4";
+        clk_pin   = <&joy_stick>, "clk-gpios:4";
+        data_pin  = <&joy_stick>, "data-gpios:4";
+    };
 };
