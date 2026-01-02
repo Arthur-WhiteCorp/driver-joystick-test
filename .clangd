@@ -12,4 +12,5 @@ CompileFlags:
 Diagnostics:
   Suppress:
     - variadic_macro_arguments_compat
+    - missing-prototypes
 

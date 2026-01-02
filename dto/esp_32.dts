@@ -2,16 +2,16 @@
 /plugin/;
 
 / {
-
 	fragment@0 {
 		target-path = "/soc";
 		__overlay__ {
 			joy_stick:  joystick@0 {
-				compatible = "equipe03,esp32_controller";
+				compatible = "equipe03,esp32_joystick";
+  				latch-gpios = <&gpio 17 0>;
+                		clk-gpios   = <&gpio 27 0>;
+                		data-gpios  = <&gpio 22 0>;
 				status = "okay";
-				string_var = "Olá, DT do joystick funcionando!!"; 
 			};
 		};
 	};
-
 };

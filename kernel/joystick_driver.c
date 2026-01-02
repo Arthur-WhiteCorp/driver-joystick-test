@@ -2,25 +2,35 @@
 #include <linux/kernel.h>
 #include <linux/input.h>
 #include <linux/init.h>
-
+#include <linux/mod_devicetable.h>
+#include <linux/platform_device.h>
 
 MODULE_LICENSE("GPL");                                     // Tipo de licença -- afeta o comportamento do tempo de execução
 MODULE_AUTHOR("Arthur Silva Matias");                                 // Autor -- visivel quando usado o modinfo
 MODULE_DESCRIPTION("Driver do joystick");  // Descrição do módulo -- visível no modinfo
 MODULE_VERSION("0.1");                                     // Versão do módulo
 
-static struct input_dev *joystick_dev;
 
-int __init joystick_init(void) {
+/*Nomeando dispositivos compatíveis */
+static const struct of_device_id my_dev_ids[] = {
+	{.compatible = "equipe03,esp32_joystick"},
+	{}  /*Importante significa o fim da lista de dispositivos compatíveis*/
+	};
+
+MODULE_DEVICE_TABLE(of, my_dev_ids);
+
+static struct input_dev *joystick_dev; //  Arquivo para o device
+
+
+/* Função de "probe" para achar o dispositivo */
+
+static int joystick_probe(struct platform_device* device){
+	pr_info("funcao de probe do joystick foi chamada!\n");
 	int error;
-
-
-	printk(KERN_INFO "Bem-vindo à criação do módulo");
-	printk(KERN_INFO MODULE_NAME);
 	joystick_dev = input_allocate_device();
-  	if (!joystick_dev) {
-                printk(KERN_ERR "button.c: Not enough memory\n");
-                error = -ENOMEM;
+	if (!joystick_dev) {
+		printk(KERN_ERR "button.c: Not enough memory\n"); 
+		error = -ENOMEM;
 		goto no_memory;
         }
 	set_bit(EV_KEY, joystick_dev->evbit);
@@ -28,7 +38,6 @@ int __init joystick_init(void) {
 	set_bit(BTN_B, joystick_dev->keybit);
 	set_bit(BTN_X, joystick_dev->keybit);
 	set_bit(BTN_Y, joystick_dev->keybit);
-	joystick_dev->name = "Titan JoyStick";
 	error = input_register_device(joystick_dev);
 	if (error) {
 		printk(KERN_ERR "button.c: Failed to register device\n");
@@ -42,9 +51,30 @@ no_memory:
 	return error;
 }
 
-void __exit joystick_exit(void) {
-	printk(KERN_INFO "O novo módulo foi removido ...\n");
+
+/* Função para remover o dispositivo */
+
+static void joystick_remove(struct platform_device* device){
         input_unregister_device(joystick_dev);
+}
+
+static struct platform_driver joystick_driver = {
+	.probe = joystick_probe,
+	.remove = joystick_remove,
+	.driver = {
+		.name = "SUPER DUPER ULTRA DRIVER",
+		.of_match_table = my_dev_ids
+	}
+};
+
+int __init joystick_init(void) {
+	pr_info("Inicializando o modulo!\n");
+	return platform_driver_register(&joystick_driver);
+}
+
+void __exit joystick_exit(void) {
+	pr_info("Iniciando remocao do modulo...\n");
+	platform_driver_unregister(&joystick_driver);
 }
 
 module_init(joystick_init);

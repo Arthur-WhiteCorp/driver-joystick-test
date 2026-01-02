@@ -65,5 +65,7 @@ build
 # nvim stuff
 .nvimlog
 
+# compiled overlay
+*.dtbo
 
 
