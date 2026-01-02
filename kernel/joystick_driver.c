@@ -4,12 +4,16 @@
 #include <linux/init.h>
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
+#include <linux/version.h>
 
 MODULE_LICENSE("GPL");                                     // Tipo de licença -- afeta o comportamento do tempo de execução
 MODULE_AUTHOR("Arthur Silva Matias");                                 // Autor -- visivel quando usado o modinfo
 MODULE_DESCRIPTION("Driver do joystick");  // Descrição do módulo -- visível no modinfo
 MODULE_VERSION("0.1");                                     // Versão do módulo
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,2,0)
+#define RETURN_INT
+#endif
 
 /*Nomeando dispositivos compatíveis */
 static const struct of_device_id my_dev_ids[] = {
@@ -54,9 +58,19 @@ no_memory:
 
 /* Função para remover o dispositivo */
 
+
+#ifndef RETURN_INT
+
 static void joystick_remove(struct platform_device* device){
         input_unregister_device(joystick_dev);
 }
+#else
+static int joystick_remove(struct platform_device* device){
+        input_unregister_device(joystick_dev);
+	return 0;
+}
+#endif
+
 
 static struct platform_driver joystick_driver = {
 	.probe = joystick_probe,
