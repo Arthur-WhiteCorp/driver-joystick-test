@@ -4,6 +4,12 @@ PWD  := $(shell pwd)
 # Compilação para AOSP
 ARCH = arm64
 
+# vazio CROSS_COMPILE pois estamos utilizando clang
+CROSS_COMPILE = 
+
+AOSP_KERNEL = /home/arthur/raspberry_kernel/common
+
+
 # Usando o clang-17 
 CLANG = clang-17
 CLANG_TARGET = aarch64-linux-gnu
@@ -14,11 +20,6 @@ OBJDUMP = llvm-objdump-17
 AR = llvm-ar-17
 NM = llvm-nm-17
 STRIP = llvm-strip-17
-
-# vazio CROSS_COMPILE pois estamos utilizando clang
-CROSS_COMPILE = 
-
-AOSP_KERNEL = /home/arthur/raspberry_kernel/common
 
 # RPi4 
 RPI4_DEFCONFIG = android_rpi4_defconfig

@@ -23,10 +23,11 @@ Para obter o kernel aosp utilizado:
 
 ```bash
 cd ~
-mkdir Kernel-Aosp14
-cd Kernel-Aosp14
-repo init --depth=1 -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1
-repo sync --force-sync --no-clone-bundle --no-tags -j$(nproc)
+mkdir raspberry_kernel
+cd raspberry_kernel
+repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1-lts
+curl -o .repo/local_manifests/manifest_brcm_rpi.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_kernel_manifest/android-14.0/manifest_brcm_rpi.xml --create-dirs
+repo sync
 ````
 Para compilar o Driver para AOSP:
 ```bash
@@ -85,7 +86,7 @@ Para compilar para dispositivos Android, primeiro configure o caminho do kernel 
 
 ```makefile
 # Atualize este caminho para onde seu kernel AOSP está localizado
-AOSP_KERNEL = /caminho/para/seu/kernel-aosp
+AOSP_KERNEL = /caminho/para/seu/raspberry_kernel/common
 ```
 
 ### 🚀 Fluxo de Trabalho Recomendado:
