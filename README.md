@@ -6,13 +6,25 @@ O projeto já vem configurado para facilitar **compilação**, **carregamento** 
 ---
 
 ## 📋 Requisitos
-
+- Imagem raspberry-vanilla
 - Linux (testado em Ubuntu)
 - Headers do kernel instalados
 - Kernel do android 14
 - Clang
 - `make`
 - (Opcional, mas recomendado) `bear` para suporte a clangd
+
+Para Obter a imagem utilizada:
+
+```bash
+cd ~
+mkdir raspberry_aosp
+repo init -u https://android.googlesource.com/platform/manifest -b android-14.0.0_r67 --depth=1
+curl -o .repo/local_manifests/manifest_brcm_rpi.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_local_manifest/android-14.0/manifest_brcm_rpi.xml --create-dirs
+curl -o .repo/local_manifests/remove_projects.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_local_manifest/android-14.0/remove_projects.xml
+repo sync
+```
+Informações extras de como fazer uma imagem e por no dispositivo: [repositório do aosp para rpi4](https://github.com/raspberry-vanilla/android_local_manifest/tree/android-14.0)
 
 Para instalar os headers do kernel:
 
