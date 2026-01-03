@@ -35,15 +35,16 @@ endif
 config:
 	cd $(AOSP_KERNEL) && \
 	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) defconfig && \
-	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules_prepare
+	./scripts/config --enable CONFIG_MODVERSIONS
 
 # Compila todos os módulos do kernel AOSP (incluindo exports)
-aosp-kernel: config
+aosp-kernel: config 
 	cd $(AOSP_KERNEL) && \
-	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) modules
+	make ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) Image.gz modules 
+
 
 # Compilação para aosp junto com o kernel
-aosp-full: aosp-kernel 
+aosp-full: aosp-kernel
 	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
