@@ -10,8 +10,7 @@ O projeto já vem configurado para facilitar **compilação**, **carregamento** 
 - Linux (testado em Ubuntu)
 - Headers do kernel instalados
 - Kernel do android 14
-- GCC
-- gcc-aarch64-linux-gnu (Cross-Compiler)
+- Clang
 - `make`
 - (Opcional, mas recomendado) `bear` para suporte a clangd
 
@@ -31,7 +30,7 @@ repo sync --force-sync --no-clone-bundle --no-tags -j$(nproc)
 ````
 Para compilar o Driver para AOSP:
 ```bash
-sudo apt-get install gcc-aarch64-linux-gnu
+sudo apt install clang-17 llvm-17 lld-17
 ```
 
 Para instalar o Bear (opcional):
@@ -149,7 +148,7 @@ make clean
 🚀Carregue o módulo:
 
 ```bash
-sudo insmod <module_name.ko>
+sudo insmod <module_name>.ko
 ```
 
 Verifique se foi carregado:
@@ -169,13 +168,13 @@ dmesg | tail
 ## ❌ Como remover o módulo
 
 ```bash
-sudo rmmod testLKM
+sudo rmmod <module_name>
 ```
 
 E confira novamente:
 
 ```bash
-lsmod | grep testLKM
+lsmod | grep <module_name>
 ```
 
 ---

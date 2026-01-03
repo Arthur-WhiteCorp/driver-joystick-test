@@ -4,7 +4,7 @@ PWD  := $(shell pwd)
 # Compilação para AOSP
 ARCH = arm64
 
-# Use clang-17 specifically
+# Usando o clang-17 
 CLANG = clang-17
 CLANG_TARGET = aarch64-linux-gnu
 CC = $(CLANG) -target $(CLANG_TARGET)
@@ -14,7 +14,8 @@ OBJDUMP = llvm-objdump-17
 AR = llvm-ar-17
 NM = llvm-nm-17
 STRIP = llvm-strip-17
-# Empty CROSS_COMPILE since we're using clang
+
+# vazio CROSS_COMPILE pois estamos utilizando clang
 CROSS_COMPILE = 
 
 AOSP_KERNEL = /home/arthur/raspberry_kernel/common
