@@ -5,6 +5,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
 #include <linux/version.h>
+#include <linux/property.h>
 
 MODULE_LICENSE("GPL");                                     // Tipo de licença -- afeta o comportamento do tempo de execução
 MODULE_AUTHOR("Arthur Silva Matias");                                 // Autor -- visivel quando usado o modinfo
@@ -30,6 +31,57 @@ static struct input_dev *joystick_dev; //  Arquivo para o device
 
 static int joystick_probe(struct platform_device* device){
 	pr_info("funcao de probe do joystick foi chamada!\n");
+
+	int status;
+	u32 latch_gpio[3]; 
+        u32 clk_gpio[3];
+        u32 data_gpio[3];
+	const char* message;
+	struct device *dev = &(device->dev);
+	
+	if (!device_property_present(dev,"latch_gpio")){
+		pr_err("latch_gpio - property is not present!\n");
+		return -1;
+	}
+	if (!device_property_present(dev,"clk_gpio")){
+		pr_err("clk_gpio - property is not present!\n");
+		return -1;
+	}
+	if (!device_property_present(dev,"data_gpio")){
+		pr_err("data_gpio - property is not present!\n");
+		return -1;
+	}
+	if (!device_property_present(dev,"message")){
+		pr_err("message - property is not present!\n");
+		return -1;
+	}
+	
+	status = device_property_read_u32_array(dev,"latch_gpio",latch_gpio,3); // returns 0 if sucessfull
+	if (status){
+		pr_err("latch_gpio - error reading property! \n");
+		return status;
+	}
+	status = device_property_read_u32_array(dev,"clk_gpio",clk_gpio,3);
+	if (status){
+		pr_err("clk_gpio - error reading property! \n");
+		return status;
+	}
+	status = device_property_read_u32_array(dev,"data_gpio",data_gpio,3);
+	if (status){
+		pr_err("data_gpio - error reading property! \n");
+		return status;
+	}
+	status = device_property_read_string(dev,"message",&message);
+	if (status){
+		pr_err("message - error reading property! \n");
+		return status;
+	}
+ 
+	pr_info("%u,%u,%u,%s\n",latch_gpio[1],clk_gpio[1],data_gpio[1],message);
+
+
+
+
 	int error;
 	joystick_dev = input_allocate_device();
 	if (!joystick_dev) {
@@ -56,11 +108,14 @@ no_memory:
 }
 
 
-/* Função para remover o dispositivo */
+
+
+//  This driver follows the Linux kernel platform device model.
+//  used to integrate peripherals on many system-on-chip processors,
+//  https://docs.kernel.org/driver-api/driver-model/platform.html
 
 
 #ifndef RETURN_INT
-
 static void joystick_remove(struct platform_device* device){
         input_unregister_device(joystick_dev);
 }

@@ -80,7 +80,7 @@ aosp-kernel: config
 	     NM="$(NM)" \
 	     STRIP="$(STRIP)" \
 	     KCFLAGS="-Wno-error=attributes" \
-	     Image.gz modules 
+	     vmlinux modules
 
 # Compilação para aosp junto com o kernel
 aosp-full: aosp-kernel
