@@ -13,11 +13,6 @@
 #include <linux/gpio/driver.h>
 #include <linux/interrupt.h>
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Arthur Silva Matias");
-MODULE_DESCRIPTION("Driver do joystick");
-MODULE_VERSION("0.1");
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6,2,0)
 #define RETURN_INT
 #endif
@@ -38,6 +33,8 @@ MODULE_DEVICE_TABLE(of, my_dev_ids);
 static struct input_dev *joystick_input_dev; //  Input device file
 struct gpio_desc *data, *clk, *latch; // gpios
 static int DATA_IRQ;
+static int CLK_IRQ;
+static int LATCH_IRQ;
 
 static irqreturn_t data_interrupt(int irq, void *dummy){
 	int button_state;
@@ -48,12 +45,12 @@ static irqreturn_t data_interrupt(int irq, void *dummy){
 }
 
 static int create_input_device(const struct device* dev){
-	int error;
+	int status;
 	joystick_input_dev = input_allocate_device();
 	if (!joystick_input_dev) {
 		dev_err(dev,"failed to create input device for joystick\n");
-		error = -ENOMEM;
-		goto no_memory;
+		status = -ENOMEM;
+		goto free_irq;
         }
 	set_bit(EV_KEY, joystick_input_dev->evbit);
 	set_bit(BTN_A, joystick_input_dev->keybit);
@@ -62,29 +59,27 @@ static int create_input_device(const struct device* dev){
 	set_bit(BTN_Y, joystick_input_dev->keybit);
 
 	joystick_input_dev->name = dev->driver->name;
-	error = input_register_device(joystick_input_dev);
-	if (error) {
+	status = input_register_device(joystick_input_dev);
+	if (status) {
 		dev_err(dev,"failed to register input device for joystick\n");
                 goto err_free_dev;
 	}
-	return 0;
+	return status;
 
 err_free_dev:
-	input_free_device(joystick_input_dev);	
-no_memory:
-	return error;
+	input_free_device(joystick_input_dev);
+free_irq:
+	free_irq(DATA_IRQ, button_interrupt);
+	return status;
 }
 
-
-static int joystick_probe(struct platform_device* device){
-	pr_info("funcao de probe do joystick foi chamada!\n");
+static int device_tree_parse(struct device* dev){
 	int status;
 	u32 latch_gpio[3]; 
         u32 clk_gpio[3];
         u32 data_gpio[3];
 	const char* message;
-	struct device *dev = &(device->dev);
-	
+		
 	if (!device_property_present(dev,"latch-gpios")){
 		dev_err(dev,"latch-gpios - property is not present!\n");
 		return -1;
@@ -124,6 +119,21 @@ static int joystick_probe(struct platform_device* device){
 	}
  
 	dev_info(dev,"%u,%u,%u,%s\n",latch_gpio[1],clk_gpio[1],data_gpio[1],message);
+	
+	return status
+
+}
+
+static int joystick_probe(struct platform_device* device){
+	int status;
+	pr_info("funcao de probe do joystick foi chamada!\n");
+	struct device *dev = &(device->dev);
+
+	status = device_tree_parse(dev); // returns 0 fi sucessfull
+	if (status){
+		return status;
+	}
+
 	data = gpiod_get_index(dev, "data", 0, GPIOD_IN);
 	//latch = gpiod_get_index(dev, "latch", 0, GPIOD_OUT_HIGH); // TODO
 	//clk = gpiod_get_index(dev, "clk", 0, GPIOD_OUT_HIGH); // TODO
@@ -146,10 +156,12 @@ static int joystick_probe(struct platform_device* device){
 #ifndef RETURN_INT
 static void joystick_remove(struct platform_device* device){
         input_unregister_device(joystick_input_dev);
+	free_irq(DATA_IRQ, button_interrupt);
 }
 #else
 static int joystick_remove(struct platform_device* device){
         input_unregister_device(joystick_input_dev);
+	free_irq(DATA_IRQ, button_interrupt);
 	return 0;
 }
 #endif
@@ -176,3 +188,11 @@ void __exit joystick_exit(void) {
 
 module_init(joystick_init);
 module_exit(joystick_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Arthur Silva Matias");
+MODULE_DESCRIPTION("Driver do joystick");
+MODULE_VERSION("0.1");
+
+
+
