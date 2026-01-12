@@ -39,9 +39,9 @@ static int LATCH_IRQ;
 static irqreturn_t data_interrupt(int irq, void *dummy){
 	int button_state;
 	button_state = gpiod_get_value(data); 
-        input_report_key(joystick_input_dev, BTN_A,button_state);
-        input_sync(joystick_input_dev);
-        return IRQ_HANDLED;
+	input_report_key(joystick_input_dev, BTN_A,button_state);
+	input_sync(joystick_input_dev);
+	return IRQ_HANDLED;
 }
 
 static int create_input_device(const struct device* dev){
@@ -51,7 +51,7 @@ static int create_input_device(const struct device* dev){
 		dev_err(dev,"failed to create input device for joystick\n");
 		status = -ENOMEM;
 		goto free_irq;
-        }
+	}
 	set_bit(EV_KEY, joystick_input_dev->evbit);
 	set_bit(BTN_A, joystick_input_dev->keybit);
 	set_bit(BTN_B, joystick_input_dev->keybit);
@@ -62,7 +62,7 @@ static int create_input_device(const struct device* dev){
 	status = input_register_device(joystick_input_dev);
 	if (status) {
 		dev_err(dev,"failed to register input device for joystick\n");
-                goto err_free_dev;
+		goto err_free_dev;
 	}
 	return status;
 
@@ -76,10 +76,10 @@ free_irq:
 static int device_tree_parse(struct device* dev){
 	int status;
 	u32 latch_gpio[3]; 
-        u32 clk_gpio[3];
-        u32 data_gpio[3];
+	u32 clk_gpio[3];
+	u32 data_gpio[3];
 	const char* message;
-		
+
 	if (!device_property_present(dev,"latch-gpios")){
 		dev_err(dev,"latch-gpios - property is not present!\n");
 		return -1;
@@ -155,12 +155,12 @@ static int joystick_probe(struct platform_device* device){
 
 #ifndef RETURN_INT
 static void joystick_remove(struct platform_device* device){
-        input_unregister_device(joystick_input_dev);
+	input_unregister_device(joystick_input_dev);
 	free_irq(DATA_IRQ, button_interrupt);
 }
 #else
 static int joystick_remove(struct platform_device* device){
-        input_unregister_device(joystick_input_dev);
+	input_unregister_device(joystick_input_dev);
 	free_irq(DATA_IRQ, button_interrupt);
 	return 0;
 }
