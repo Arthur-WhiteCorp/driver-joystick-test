@@ -68,39 +68,54 @@ config:
 		--enable CONFIG_MODVERSIONS \
 		--enable CONFIG_MODULES
 
-# Compila todos os módulos do kernel AOSP (incluindo exports)
-aosp-kernel: config 
-	cd $(AOSP_KERNEL) && \
-	make ARCH=$(ARCH) \
-	     CC="$(CC)" \
-	     LD="$(LD)" \
-	     OBJCOPY="$(OBJCOPY)" \
-	     OBJDUMP="$(OBJDUMP)" \
-	     AR="$(AR)" \
-	     NM="$(NM)" \
-	     STRIP="$(STRIP)" \
-	     KCFLAGS="-Wno-error=attributes" \
-	     vmlinux modules
 
-# Compilação para aosp junto com o kernel
+# Compilação para aosp junto com o kernel COM BEAR
 aosp-full: aosp-kernel
-	$(MAKE) -C $(AOSP_KERNEL) \
+ifdef BEAR
+	@echo "[+] Building AOSP module + generating compile_commands.json"
+	@rm -f compile_commands.json kernel/compile_commands.json
+	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CC="$(CC)" \
 		LD="$(LD)" \
 		KCFLAGS="-Wno-error=attributes" \
 		M=$(PWD)/kernel \
 		modules
+	@ln -s ../compile_commands.json kernel/compile_commands.json
+else
+	@echo "[+] Building AOSP module (Bear not found)"
+	@$(MAKE) -C $(AOSP_KERNEL) \
+		ARCH=$(ARCH) \
+		CC="$(CC)" \
+		LD="$(LD)" \
+		KCFLAGS="-Wno-error=attributes" \
+		M=$(PWD)/kernel \
+		modules
+endif
 
-# Compila somente o driver se o kernel já está compilado
+# Compila somente o driver se o kernel já está compilado COM BEAR
 aosp: 
-	$(MAKE) -C $(AOSP_KERNEL) \
+ifdef BEAR
+	@echo "[+] Building AOSP module only + generating compile_commands.json"
+	@rm -f compile_commands.json kernel/compile_commands.json
+	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CC="$(CC)" \
 		LD="$(LD)" \
 		KCFLAGS="-Wno-error=attributes" \
 		M=$(PWD)/kernel \
 		modules
+	@ln -s ../compile_commands.json kernel/compile_commands.json
+else
+	@echo "[+] Building AOSP module only (Bear not found)"
+	@$(MAKE) -C $(AOSP_KERNEL) \
+		ARCH=$(ARCH) \
+		CC="$(CC)" \
+		LD="$(LD)" \
+		KCFLAGS="-Wno-error=attributes" \
+		M=$(PWD)/kernel \
+		modules
+endif
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD)/kernel clean

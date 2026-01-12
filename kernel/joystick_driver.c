@@ -7,31 +7,64 @@
 #include <linux/version.h>
 #include <linux/property.h>
 
-MODULE_LICENSE("GPL");                                     // Tipo de licença -- afeta o comportamento do tempo de execução
-MODULE_AUTHOR("Arthur Silva Matias");                                 // Autor -- visivel quando usado o modinfo
-MODULE_DESCRIPTION("Driver do joystick");  // Descrição do módulo -- visível no modinfo
-MODULE_VERSION("0.1");                                     // Versão do módulo
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Arthur Silva Matias");
+MODULE_DESCRIPTION("Driver do joystick");
+MODULE_VERSION("0.1");
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6,2,0)
 #define RETURN_INT
 #endif
 
-/*Nomeando dispositivos compatíveis */
+//  This driver follows the Linux kernel platform device model.
+//  used to integrate peripherals on many system-on-chip processors,
+//  https://docs.kernel.org/driver-api/driver-model/platform.html
+
+
+/*Naming compatible devices*/
 static const struct of_device_id my_dev_ids[] = {
 	{.compatible = "equipe03,esp32_joystick"},
-	{}  /*Importante significa o fim da lista de dispositivos compatíveis*/
+	{}  /*End of list*/
 	};
 
 MODULE_DEVICE_TABLE(of, my_dev_ids);
 
-static struct input_dev *joystick_dev; //  Arquivo para o device
+static struct input_dev *joystick_input_dev; //  Input device file
 
 
-/* Função de "probe" para achar o dispositivo */
+
+
+static int create_input_device(const struct device* dev){
+	int error;
+	joystick_input_dev = input_allocate_device();
+	if (!joystick_input_dev) {
+		dev_err(dev,"failed to create input device for joystick\n");
+		error = -ENOMEM;
+		goto no_memory;
+        }
+	set_bit(EV_KEY, joystick_input_dev->evbit);
+	set_bit(BTN_A, joystick_input_dev->keybit);
+	set_bit(BTN_B, joystick_input_dev->keybit);
+	set_bit(BTN_X, joystick_input_dev->keybit);
+	set_bit(BTN_Y, joystick_input_dev->keybit);
+
+	joystick_input_dev->name = dev->driver->name;
+	error = input_register_device(joystick_input_dev);
+	if (error) {
+		dev_err(dev,"failed to register input device for joystick\n");
+                goto err_free_dev;
+	}
+	return 0;
+
+err_free_dev:
+	input_free_device(joystick_input_dev);	
+no_memory:
+	return error;
+}
+
 
 static int joystick_probe(struct platform_device* device){
 	pr_info("funcao de probe do joystick foi chamada!\n");
-
 	int status;
 	u32 latch_gpio[3]; 
         u32 clk_gpio[3];
@@ -40,79 +73,52 @@ static int joystick_probe(struct platform_device* device){
 	struct device *dev = &(device->dev);
 	
 	if (!device_property_present(dev,"latch_gpio")){
-		pr_err("latch_gpio - property is not present!\n");
+		dev_err(dev,"latch_gpio - property is not present!\n");
 		return -1;
 	}
 	if (!device_property_present(dev,"clk_gpio")){
-		pr_err("clk_gpio - property is not present!\n");
+		dev_err(dev,"clk_gpio - property is not present!\n");
 		return -1;
 	}
 	if (!device_property_present(dev,"data_gpio")){
-		pr_err("data_gpio - property is not present!\n");
+		dev_err(dev,"data_gpio - property is not present!\n");
 		return -1;
 	}
 	if (!device_property_present(dev,"message")){
-		pr_err("message - property is not present!\n");
+		dev_err(dev,"message - property is not present!\n");
 		return -1;
 	}
 	
 	status = device_property_read_u32_array(dev,"latch_gpio",latch_gpio,3); // returns 0 if sucessfull
 	if (status){
-		pr_err("latch_gpio - error reading property! \n");
+		dev_err(dev,"latch_gpio - error reading property! \n");
 		return status;
 	}
 	status = device_property_read_u32_array(dev,"clk_gpio",clk_gpio,3);
 	if (status){
-		pr_err("clk_gpio - error reading property! \n");
+		dev_err(dev,"clk_gpio - error reading property! \n");
 		return status;
 	}
 	status = device_property_read_u32_array(dev,"data_gpio",data_gpio,3);
 	if (status){
-		pr_err("data_gpio - error reading property! \n");
+		dev_err(dev,"data_gpio - error reading property! \n");
 		return status;
 	}
 	status = device_property_read_string(dev,"message",&message);
 	if (status){
-		pr_err("message - error reading property! \n");
+		dev_err(dev,"message - error reading property! \n");
 		return status;
 	}
  
-	pr_info("%u,%u,%u,%s\n",latch_gpio[1],clk_gpio[1],data_gpio[1],message);
+	dev_info(dev,"%u,%u,%u,%s\n",latch_gpio[1],clk_gpio[1],data_gpio[1],message);
 
 
-
-
-	int error;
-	joystick_dev = input_allocate_device();
-	if (!joystick_dev) {
-		printk(KERN_ERR "button.c: Not enough memory\n"); 
-		error = -ENOMEM;
-		goto no_memory;
-        }
-	set_bit(EV_KEY, joystick_dev->evbit);
-	set_bit(BTN_A, joystick_dev->keybit);
-	set_bit(BTN_B, joystick_dev->keybit);
-	set_bit(BTN_X, joystick_dev->keybit);
-	set_bit(BTN_Y, joystick_dev->keybit);
-	error = input_register_device(joystick_dev);
-	if (error) {
-		printk(KERN_ERR "button.c: Failed to register device\n");
-                goto err_free_dev;
-	}
-	return 0;
-
-err_free_dev:
-	input_free_device(joystick_dev);	
-no_memory:
-	return error;
+	status = create_input_device(dev);
+	return status;
 }
 
 
 
-
-//  This driver follows the Linux kernel platform device model.
-//  used to integrate peripherals on many system-on-chip processors,
-//  https://docs.kernel.org/driver-api/driver-model/platform.html
 
 
 #ifndef RETURN_INT
@@ -121,7 +127,7 @@ static void joystick_remove(struct platform_device* device){
 }
 #else
 static int joystick_remove(struct platform_device* device){
-        input_unregister_device(joystick_dev);
+        input_unregister_device(joystick_input_dev);
 	return 0;
 }
 #endif
@@ -131,7 +137,7 @@ static struct platform_driver joystick_driver = {
 	.probe = joystick_probe,
 	.remove = joystick_remove,
 	.driver = {
-		.name = "SUPER DUPER ULTRA DRIVER",
+		.name = "PLATFORM DRIVER FOR JOYSTICK",
 		.of_match_table = my_dev_ids
 	}
 };
