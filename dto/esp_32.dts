@@ -7,9 +7,9 @@
 		__overlay__ {
 			joy_stick:  joystick@0 {
 				compatible = "equipe03,esp32_joystick";
-  				latch_gpio = <&gpio 17 0>;
-                		clk_gpio   = <&gpio 27 0>;
-                		data_gpio  = <&gpio 22 0>;
+  				latch-gpios = <&gpio 17 0>;
+                		clk-gpios   = <&gpio 27 0>;
+                		data-gpios  = <&gpio 22 0>;
 				message = "Have a good life";
 				status = "okay";
 			};

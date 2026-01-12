@@ -6,6 +6,12 @@
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/property.h>
+#include <asm/irq.h>
+#include <asm/io.h>
+#include <linux/irqreturn.h>
+#include <linux/gpio/consumer.h>
+#include <linux/gpio/driver.h>
+#include <linux/interrupt.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Arthur Silva Matias");
@@ -30,9 +36,16 @@ static const struct of_device_id my_dev_ids[] = {
 MODULE_DEVICE_TABLE(of, my_dev_ids);
 
 static struct input_dev *joystick_input_dev; //  Input device file
+struct gpio_desc *data, *clk, *latch; // gpios
+static int DATA_IRQ;
 
-
-
+static irqreturn_t data_interrupt(int irq, void *dummy){
+	int button_state;
+	button_state = gpiod_get_value(data); 
+        input_report_key(joystick_input_dev, BTN_A,button_state);
+        input_sync(joystick_input_dev);
+        return IRQ_HANDLED;
+}
 
 static int create_input_device(const struct device* dev){
 	int error;
@@ -72,16 +85,16 @@ static int joystick_probe(struct platform_device* device){
 	const char* message;
 	struct device *dev = &(device->dev);
 	
-	if (!device_property_present(dev,"latch_gpio")){
-		dev_err(dev,"latch_gpio - property is not present!\n");
+	if (!device_property_present(dev,"latch-gpios")){
+		dev_err(dev,"latch-gpios - property is not present!\n");
 		return -1;
 	}
-	if (!device_property_present(dev,"clk_gpio")){
-		dev_err(dev,"clk_gpio - property is not present!\n");
+	if (!device_property_present(dev,"clk-gpios")){
+		dev_err(dev,"clk-gpios - property is not present!\n");
 		return -1;
 	}
-	if (!device_property_present(dev,"data_gpio")){
-		dev_err(dev,"data_gpio - property is not present!\n");
+	if (!device_property_present(dev,"data-gpios")){
+		dev_err(dev,"data-gpios - property is not present!\n");
 		return -1;
 	}
 	if (!device_property_present(dev,"message")){
@@ -89,19 +102,19 @@ static int joystick_probe(struct platform_device* device){
 		return -1;
 	}
 	
-	status = device_property_read_u32_array(dev,"latch_gpio",latch_gpio,3); // returns 0 if sucessfull
+	status = device_property_read_u32_array(dev,"latch-gpios",latch_gpio,3); // returns 0 if sucessfull
 	if (status){
-		dev_err(dev,"latch_gpio - error reading property! \n");
+		dev_err(dev,"latch-gpios - error reading property! \n");
 		return status;
 	}
-	status = device_property_read_u32_array(dev,"clk_gpio",clk_gpio,3);
+	status = device_property_read_u32_array(dev,"clk-gpios",clk_gpio,3);
 	if (status){
-		dev_err(dev,"clk_gpio - error reading property! \n");
+		dev_err(dev,"clk-gpios - error reading property! \n");
 		return status;
 	}
-	status = device_property_read_u32_array(dev,"data_gpio",data_gpio,3);
+	status = device_property_read_u32_array(dev,"data-gpios",data_gpio,3);
 	if (status){
-		dev_err(dev,"data_gpio - error reading property! \n");
+		dev_err(dev,"data-gpios - error reading property! \n");
 		return status;
 	}
 	status = device_property_read_string(dev,"message",&message);
@@ -111,7 +124,16 @@ static int joystick_probe(struct platform_device* device){
 	}
  
 	dev_info(dev,"%u,%u,%u,%s\n",latch_gpio[1],clk_gpio[1],data_gpio[1],message);
+	data = gpiod_get_index(dev, "data", 0, GPIOD_IN);
+	//latch = gpiod_get_index(dev, "latch", 0, GPIOD_OUT_HIGH); // TODO
+	//clk = gpiod_get_index(dev, "clk", 0, GPIOD_OUT_HIGH); // TODO
+	
 
+	DATA_IRQ = gpiod_to_irq(data);
+	if (request_irq(DATA_IRQ, data_interrupt, 0, dev->driver->name, NULL)) {
+		dev_err(dev,"Can't allocate irq %d\n", DATA_IRQ);
+		return -EBUSY;
+        }
 
 	status = create_input_device(dev);
 	return status;
@@ -123,7 +145,7 @@ static int joystick_probe(struct platform_device* device){
 
 #ifndef RETURN_INT
 static void joystick_remove(struct platform_device* device){
-        input_unregister_device(joystick_dev);
+        input_unregister_device(joystick_input_dev);
 }
 #else
 static int joystick_remove(struct platform_device* device){
