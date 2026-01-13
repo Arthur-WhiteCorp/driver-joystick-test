@@ -7,7 +7,7 @@ ARCH = arm64
 # vazio CROSS_COMPILE pois estamos utilizando clang
 CROSS_COMPILE = 
 
-AOSP_KERNEL = /home/arthur/raspberry_kernel/common
+AOSP_KERNEL = /home/$(USER)/raspberry_kernel/common
 
 
 # Usando o clang-17 
