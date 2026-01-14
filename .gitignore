@@ -69,3 +69,6 @@ build
 *.dtbo
 
 
+# LSP STUFF
+
+*compile_commands.json
