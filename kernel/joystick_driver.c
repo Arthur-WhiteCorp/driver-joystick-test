@@ -138,7 +138,7 @@ static int joystick_probe(struct platform_device *device) {
   // clk = gpiod_get_index(dev, "clk", 0, GPIOD_OUT_HIGH); // TODO
 
   DATA_IRQ = gpiod_to_irq(data);
-  if (request_irq(DATA_IRQ, data_interrupt, 0, dev->driver->name, NULL)) {
+  if (request_irq(DATA_IRQ, data_interrupt,IRQF_TRIGGER_RISING, dev->driver->name, NULL)) {
     dev_err(dev, "Can't allocate irq %d\n", DATA_IRQ);
     return -EBUSY;
   }
