@@ -10,7 +10,7 @@
 #include <linux/version.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
-
+#include <linux/pwm.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 #define RETURN_INT
 #endif

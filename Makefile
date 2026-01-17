@@ -11,10 +11,9 @@ AOSP_KERNEL = /home/$(USER)/raspberry_kernel/common
 
 
 # Usando o clang-17 
-CLANG = clang-17
-CLANG_TARGET = aarch64-linux-gnu
-CC = $(CLANG) -target $(CLANG_TARGET)
-LD = ld.lld-17
+
+LLVM = 1
+LLVM_IAS = 1
 OBJCOPY = llvm-objcopy-17
 OBJDUMP = llvm-objdump-17
 AR = llvm-ar-17
@@ -28,6 +27,11 @@ RPI4_DEFCONFIG_PATH = $(AOSP_KERNEL)/arch/arm64/configs/$(RPI4_DEFCONFIG)
 BEAR := $(shell command -v bear 2>/dev/null)
 
 .PHONY: all clean aosp config aosp-full aosp-kernel
+
+# Bazel targets
+RPI4_BAZEL_TARGET = //common:rpi4
+BAZEL_CONFIGS = --config=fast --config=stamp
+
 
 # Regras de compilação para x86 
 all:
@@ -45,55 +49,38 @@ endif
 
 # Configuração do kernel aosp
 config:
+	@echo "[+] Configuring kernel source for module building"
 	cd $(AOSP_KERNEL) && \
-	make ARCH=$(ARCH) \
-	     CC="$(CC)" \
-	     LD="$(LD)" \
-	     OBJCOPY="$(OBJCOPY)" \
-	     OBJDUMP="$(OBJDUMP)" \
-	     AR="$(AR)" \
-	     NM="$(NM)" \
-	     STRIP="$(STRIP)" \
-	     distclean && \
-	make ARCH=$(ARCH) \
-	     CC="$(CC)" \
-	     LD="$(LD)" \
-	     OBJCOPY="$(OBJCOPY)" \
-	     OBJDUMP="$(OBJDUMP)" \
-	     AR="$(AR)" \
-	     NM="$(NM)" \
-	     STRIP="$(STRIP)" \
-	     $(RPI4_DEFCONFIG) && \
-	./scripts/config \
-		--enable CONFIG_MODVERSIONS \
-		--enable CONFIG_MODULES
+	make ARCH=arm64 $(RPI4_DEFCONFIG) && \
+	make ARCH=arm64 oldconfig && \
+	make ARCH=arm64 prepare && \
+	make ARCH=arm64 modules_prepare 
 
 
-# Compilação para aosp junto com o kernel COM BEAR
-aosp-full: aosp-kernel
-ifdef BEAR
-	@echo "[+] Building AOSP module + generating compile_commands.json"
-	@rm -f compile_commands.json kernel/compile_commands.json
-	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
-		ARCH=$(ARCH) \
-		CC="$(CC)" \
-		LD="$(LD)" \
-		KCFLAGS="-Wno-error=attributes" \
-		M=$(PWD)/kernel \
-		modules
-	@ln -s ../compile_commands.json kernel/compile_commands.json
-else
-	@echo "[+] Building AOSP module (Bear not found)"
+# Compilação do kernel com Bazel
+
+aosp-kernel:
+	@echo "[+] Smart cleaning for Bazel"
+	cd $(AOSP_KERNEL) && \
+	rm -f .config .config.old && \
+	rm -rf include/config/ include/generated/ && \
+	rm -f Module.symvers modules.order && \
+	find . -type f -name "*.o" -delete && \
+	find . -type f -name ".*.cmd" -delete && \
+	find . -type f -name "*.ko" -delete
+	@echo "[+] Building with Bazel"
+	cd $(AOSP_KERNEL) && cd .. && \
+	tools/bazel build --config=fast --config=stamp //common:rpi4
+
+aosp-full: aosp-kernel config
+	@echo "[+] Building AOSP module"
 	@$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
-		CC="$(CC)" \
-		LD="$(LD)" \
-		KCFLAGS="-Wno-error=attributes" \
+		LLVM=1 \
+		LLVM_IAS=1 \
+		KCFLAGS="-Wno-error=unknown-argument -Wno-error=unused-command-line-argument" \
 		M=$(PWD)/kernel \
-		modules
-endif
-
-# Compila somente o driver se o kernel já está compilado COM BEAR
+		modules# Compila somente o driver se o kernel já está compilado COM BEAR
 aosp: 
 ifdef BEAR
 	@echo "[+] Building AOSP module only + generating compile_commands.json"
