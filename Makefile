@@ -7,13 +7,13 @@ ARCH = arm64
 # vazio CROSS_COMPILE pois estamos utilizando clang
 CROSS_COMPILE = 
 
-AOSP_KERNEL = /home/$(USER)/raspberry_kernel/common
-
+AOSP_KERNEL = /home/arthur/raspberry_kernel/common
 
 # Usando o clang-17 
-
-LLVM = 1
-LLVM_IAS = 1
+CLANG = clang-17
+CLANG_TARGET = aarch64-linux-gnu
+CC = $(CLANG) -target $(CLANG_TARGET)
+LD = ld.lld-17
 OBJCOPY = llvm-objcopy-17
 OBJDUMP = llvm-objdump-17
 AR = llvm-ar-17
@@ -27,11 +27,6 @@ RPI4_DEFCONFIG_PATH = $(AOSP_KERNEL)/arch/arm64/configs/$(RPI4_DEFCONFIG)
 BEAR := $(shell command -v bear 2>/dev/null)
 
 .PHONY: all clean aosp config aosp-full aosp-kernel
-
-# Bazel targets
-RPI4_BAZEL_TARGET = //common:rpi4
-BAZEL_CONFIGS = --config=fast --config=stamp
-
 
 # Regras de compilação para x86 
 all:
@@ -49,41 +44,64 @@ endif
 
 # Configuração do kernel aosp
 config:
-	@echo "[+] Configuring kernel source for module building"
 	cd $(AOSP_KERNEL) && \
-	make ARCH=arm64 $(RPI4_DEFCONFIG) && \
-	make ARCH=arm64 oldconfig && \
-	make ARCH=arm64 prepare && \
-	make ARCH=arm64 modules_prepare 
+	make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     distclean && \
+	make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     $(RPI4_DEFCONFIG) && \
+	./scripts/config \
+		--enable CONFIG_MODVERSIONS \
+		--enable CONFIG_MODULES
 
-
-# Compilação do kernel com Bazel
-
-aosp-kernel:
-	@echo "[+] Smart cleaning for Bazel"
-	cd $(AOSP_KERNEL) && \
-	rm -f .config .config.old && \
-	rm -rf include/config/ include/generated/ && \
-	rm -f Module.symvers modules.order && \
-	find . -type f -name "*.o" -delete && \
-	find . -type f -name ".*.cmd" -delete && \
-	find . -type f -name "*.ko" -delete
-	@echo "[+] Building with Bazel"
-	cd $(AOSP_KERNEL) && cd .. && \
-	tools/bazel build --config=fast --config=stamp //common:rpi4
-
-aosp-full: aosp-kernel config
-	@echo "[+] Building AOSP module"
-	@$(MAKE) -C $(AOSP_KERNEL) \
-		ARCH=$(ARCH) \
-		LLVM=1 \
-		LLVM_IAS=1 \
-		KCFLAGS="-Wno-error=unknown-argument -Wno-error=unused-command-line-argument" \
-		M=$(PWD)/kernel \
-		modules# Compila somente o driver se o kernel já está compilado COM BEAR
-aosp: 
+# Compila todos os módulos do kernel AOSP (incluindo exports) com Bear
+aosp-kernel: config 
 ifdef BEAR
-	@echo "[+] Building AOSP module only + generating compile_commands.json"
+	@echo "[+] Building AOSP kernel + generating compile_commands.json"
+	@rm -f $(AOSP_KERNEL)/compile_commands.json
+	cd $(AOSP_KERNEL) && \
+	bear -- make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     KCFLAGS="-Wno-error=attributes" \
+	     vmlinux modules 
+else
+	@echo "[+] Building AOSP kernel (Bear not found)"
+	cd $(AOSP_KERNEL) && \
+	make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     KCFLAGS="-Wno-error=attributes" \
+	     vmlinux modules 
+endif
+
+# Compilação para aosp junto com o kernel usando Bear
+aosp-full: aosp-kernel
+ifdef BEAR
+	@echo "[+] Building driver with kernel + generating compile_commands.json"
 	@rm -f compile_commands.json kernel/compile_commands.json
 	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
@@ -94,8 +112,32 @@ ifdef BEAR
 		modules
 	@ln -s ../compile_commands.json kernel/compile_commands.json
 else
-	@echo "[+] Building AOSP module only (Bear not found)"
-	@$(MAKE) -C $(AOSP_KERNEL) \
+	@echo "[+] Building driver with kernel (Bear not found)"
+	$(MAKE) -C $(AOSP_KERNEL) \
+		ARCH=$(ARCH) \
+		CC="$(CC)" \
+		LD="$(LD)" \
+		KCFLAGS="-Wno-error=attributes" \
+		M=$(PWD)/kernel \
+		modules
+endif
+
+# Compila somente o driver se o kernel já está compilado com Bear
+aosp: 
+ifdef BEAR
+	@echo "[+] Building driver + generating compile_commands.json"
+	@rm -f compile_commands.json kernel/compile_commands.json
+	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
+		ARCH=$(ARCH) \
+		CC="$(CC)" \
+		LD="$(LD)" \
+		KCFLAGS="-Wno-error=attributes" \
+		M=$(PWD)/kernel \
+		modules
+	@ln -s ../compile_commands.json kernel/compile_commands.json
+else
+	@echo "[+] Building driver (Bear not found)"
+	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CC="$(CC)" \
 		LD="$(LD)" \
@@ -106,4 +148,5 @@ endif
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD)/kernel clean
-	@rm -f compile_commands.json kernel/compile_commands.json@rm -f compile_commands.json kernel/compile_commands.json
+	@rm -f compile_commands.json kernel/compile_commands.json
+	@rm -f $(AOSP_KERNEL)/compile_commands.json
