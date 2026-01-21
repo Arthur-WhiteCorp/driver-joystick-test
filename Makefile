@@ -68,11 +68,41 @@ config:
 		--enable CONFIG_MODVERSIONS \
 		--enable CONFIG_MODULES
 
+# Compila todos os módulos do kernel AOSP (incluindo exports) com Bear
+aosp-kernel: config 
+ifdef BEAR
+	@echo "[+] Building AOSP kernel + generating compile_commands.json"
+	@rm -f $(AOSP_KERNEL)/compile_commands.json
+	cd $(AOSP_KERNEL) && \
+	bear -- make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     KCFLAGS="-Wno-error=attributes" \
+	     vmlinux modules 
+else
+	@echo "[+] Building AOSP kernel (Bear not found)"
+	cd $(AOSP_KERNEL) && \
+	make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     KCFLAGS="-Wno-error=attributes" \
+	     vmlinux modules 
+endif
 
-# Compilação para aosp junto com o kernel COM BEAR
+# Compilação para aosp junto com o kernel usando Bear
 aosp-full: aosp-kernel
 ifdef BEAR
-	@echo "[+] Building AOSP module + generating compile_commands.json"
+	@echo "[+] Building driver with kernel + generating compile_commands.json"
 	@rm -f compile_commands.json kernel/compile_commands.json
 	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
@@ -83,8 +113,8 @@ ifdef BEAR
 		modules
 	@ln -s ../compile_commands.json kernel/compile_commands.json
 else
-	@echo "[+] Building AOSP module (Bear not found)"
-	@$(MAKE) -C $(AOSP_KERNEL) \
+	@echo "[+] Building driver with kernel (Bear not found)"
+	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CC="$(CC)" \
 		LD="$(LD)" \
@@ -93,10 +123,10 @@ else
 		modules
 endif
 
-# Compila somente o driver se o kernel já está compilado COM BEAR
+# Compila somente o driver se o kernel já está compilado com Bear
 aosp: 
 ifdef BEAR
-	@echo "[+] Building AOSP module only + generating compile_commands.json"
+	@echo "[+] Building driver + generating compile_commands.json"
 	@rm -f compile_commands.json kernel/compile_commands.json
 	@bear -- $(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
@@ -107,8 +137,8 @@ ifdef BEAR
 		modules
 	@ln -s ../compile_commands.json kernel/compile_commands.json
 else
-	@echo "[+] Building AOSP module only (Bear not found)"
-	@$(MAKE) -C $(AOSP_KERNEL) \
+	@echo "[+] Building driver (Bear not found)"
+	$(MAKE) -C $(AOSP_KERNEL) \
 		ARCH=$(ARCH) \
 		CC="$(CC)" \
 		LD="$(LD)" \
@@ -119,4 +149,5 @@ endif
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD)/kernel clean
-	@rm -f compile_commands.json kernel/compile_commands.json@rm -f compile_commands.json kernel/compile_commands.json
+	@rm -f compile_commands.json kernel/compile_commands.json
+	@rm -f $(AOSP_KERNEL)/compile_commands.json
