@@ -152,10 +152,11 @@ static int nesjoy_thread_fn(void *device) {
   while (!kthread_should_stop()) {
     u16 state = nesjoy_read_bits();
 
-    dev_info(device, " joy thread running!\n");
+    dev_info(device, " joy thread running! %d\n", state);
     // Reportar botões
     for (int i = 0; i < NES_BITS; i++) {
-      int pressed = (state >> i) & 0x1;
+      uint pressed = (state >> i) & 0x1;
+      dev_info(device, " Button %d: %d\n", i, pressed);
       input_report_key(joystick_input_dev, nes_keycodes[i], pressed);
     }
     input_sync(joystick_input_dev);

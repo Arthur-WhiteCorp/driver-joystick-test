@@ -105,11 +105,18 @@ void updateDpadFromAxes() {
 uint16_t buildSnapshot()
 {
   uint16_t s = 0;
-  uint8_t UP    = dpadUp    ? 1 : 0;
-  uint8_t DOWN  = dpadDown  ? 1 : 0;
-  uint8_t LEFT  = dpadLeft  ? 1 : 0;
-  uint8_t RIGHT = dpadRight ? 1 : 0;
-
+  aA = 1;
+  aB = 0;
+  aSEL = 0;
+  aSTA = 0;
+  uint8_t UP    = 1;
+  uint8_t DOWN  = 0;
+  uint8_t LEFT  = 1;
+  uint8_t RIGHT = 0;
+  aC = 1;
+  aD = 1;
+  aPUSH = 0;
+  
   s |= (aA    << 0);
   s |= (aB    << 1);
   s |= (aSEL  << 2);
@@ -121,14 +128,7 @@ uint16_t buildSnapshot()
   s |= (aC    << 8);
   s |= (aD    << 9);
   s |= (aPUSH <<10); // NOVO bit 10
-                     //
 
-  // prints the snapshot for debugging
-  Serial.print("Snapshot: ");
-  for (int i = 0; i < NES_BITS; i++) {
-    Serial.print((s >> i) & 0x1);
-  }
-  Serial.println();
   return s;
 }
 
@@ -141,6 +141,7 @@ inline void writeDataBit(uint8_t bit) {
 
 volatile int lastLatch = HIGH;
 volatile int lastClock = LOW;
+volatile int v;
 
 void IRAM_ATTR isrLatch()
 {
@@ -230,5 +231,5 @@ void loop()
   // }
 
   updateDpadFromAxes();
-  delay(1);
+  delay(100);
 }

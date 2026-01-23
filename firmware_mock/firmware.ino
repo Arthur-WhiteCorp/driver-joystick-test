@@ -7,9 +7,9 @@
 #define NES_BITS 11
 
 // Pinos do protocolo (host -> ESP32: LATCH/CLOCK, ESP32 -> host: DATA)
-const int PIN_LATCH = 19; // entrada
-const int PIN_CLOCK = 18; // entrada
-const int PIN_DATA  = 5;  // saída
+const int PIN_LATCH = 12; // entrada
+const int PIN_CLOCK = 14; // entrada
+const int PIN_DATA  = 27;  // saída
 
 // Botões digitais (GND = pressionado)
 const int PIN_A      = 32;
@@ -87,28 +87,18 @@ void updateDpadFromAxes(int rawX, int rawY) {
 uint16_t buildSnapshot()
 {
   uint16_t s = 0;
-  uint8_t UP    = dpadUp    ? 1 : 0;
-  uint8_t DOWN  = dpadDown  ? 1 : 0;
-  uint8_t LEFT  = dpadLeft  ? 1 : 0;
-  uint8_t RIGHT = dpadRight ? 1 : 0;
-
-  s |= (aA    << 0);
-  s |= (aB    << 1);
-  s |= (aSEL  << 2);
-  s |= (aSTA  << 3);
-  s |= (UP    << 4);
-  s |= (DOWN  << 5);
-  s |= (LEFT  << 6);
-  s |= (RIGHT << 7);
-  s |= (aC    << 8);
-  s |= (aD    << 9);
+  s |= (1 << 0); // a
+  s |= (0 << 1); // b
+  s |= (0 << 2); // sel
+  s |= (0 << 3); // start
+  s |= (1 << 4); // dpad up
+  s |= (0 << 5); // dpad down
+  s |= (0 << 6); // dpad left
+  s |= (0 << 7); // dpad right
+  s |= (0 << 8); // c / x
+  s |= (1 << 9); // d / y
   s |= (aPUSH <<10); // NOVO bit 10
 
-  Serial.print("Snapshot: ");
-  for (int i = 0; i < NES_BITS; i++) {
-    Serial.print((s >> i) & 0x1);
-  }
-  Serial.println();
   return s;
 }
 
