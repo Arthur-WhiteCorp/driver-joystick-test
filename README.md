@@ -63,6 +63,7 @@ sudo apt install bear
 ├── compile_commands.json        (gerado automaticamente)
 ├── .clangd                      (configuração do clangd)
 ├── dto/                   (device tree overlay para o joystick do ESP32)
+├── firmware_mock/                   (firmware usado para testar o driver)
 └── kernel/                      (código do módulo)
     ├── testLKM.c
     ├── Makefile
