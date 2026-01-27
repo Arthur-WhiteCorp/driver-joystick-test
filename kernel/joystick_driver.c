@@ -1,4 +1,5 @@
 #include "linux/dev_printk.h"
+#include "linux/irq.h"
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
@@ -25,10 +26,12 @@
 //	used to integrate peripherals on many system-on-chip processors,
 //	https://docs.kernel.org/driver-api/driver-model/platform.html
 
-static int poll_interval_ms = 2; // ~500 Hz
+// static int poll_interval_ms = 2; // ~500 Hz
 struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
-struct gpio_desc *data, *clk, *latch;        // gpios
+struct gpio_desc *data, *clk;        // gpios
+struct pwm_device *pwm;
+struct pwm_state state;
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
@@ -72,15 +75,11 @@ err_free_dev:
 
 static int device_tree_parse(struct device *dev) {
   int status;
-  u32 latch_gpio[3];
+  u32 latch_pwm[3];
   u32 clk_gpio[3];
   u32 data_gpio[3];
   const char *message;
 
-  if (!device_property_present(dev, "latch-gpios")) {
-    dev_err(dev, "latch-gpios - property is not present!\n");
-    return -1;
-  }
   if (!device_property_present(dev, "clk-gpios")) {
     dev_err(dev, "clk-gpios - property is not present!\n");
     return -1;
@@ -93,11 +92,21 @@ static int device_tree_parse(struct device *dev) {
     dev_err(dev, "message - property is not present!\n");
     return -1;
   }
+  if (!device_property_present(dev, "pwms")) {
+    dev_err(dev, "pwms - property is not present!\n");
+    return -1;
+  }
+  if (!device_property_present(dev, "pwm-names")) {
+    dev_err(dev, "pwm-names - property is not present!\n");
+    return -1;
+  }
 
-  status = device_property_read_u32_array(dev, "latch-gpios", latch_gpio,
-                                          3); // returns 0 if sucessfull
+
+
+
+  status = device_property_read_u32_array(dev, "pwms", latch_pwm, 4); // returns 0 if sucessfull
   if (status) {
-    dev_err(dev, "latch-gpios - error reading property! \n");
+    dev_err(dev, "pwms - error reading property! \n");
     return status;
   }
   status = device_property_read_u32_array(dev, "clk-gpios", clk_gpio, 3);
@@ -116,21 +125,22 @@ static int device_tree_parse(struct device *dev) {
     return status;
   }
 
-  dev_info(dev, "%u,%u,%u,%s\n", latch_gpio[1], clk_gpio[1], data_gpio[1],
+  dev_info(dev, "%u,%u,%u,%s\n", latch_pwm[1], clk_gpio[1], data_gpio[1],
            message);
 
   return status;
 }
 
+/*
 // Lê NES_BITS (11) bits, ativo-em-0 (0 = pressionado no fio DATA)
 static u16 nesjoy_read_bits(void) {
   int i;
   u16 bits = 0;
 
   // Pulso de LATCH: alto para carregar o shift register no "controle"
-  gpiod_set_value_cansleep(latch, 1);
+  //gpiod_set_value_cansleep(latch, 1);
   udelay(12);
-  gpiod_set_value_cansleep(latch, 0);
+  //gpiod_set_value_cansleep(latch, 0);
   udelay(6);
 
   // Primeiro bit já disponível, depois avançar com clock
@@ -170,7 +180,7 @@ static int nesjoy_thread_fn(void *device) {
   }
   return 0;
 }
-
+*/
 static int joystick_probe(struct platform_device *device) {
   int status;
   pr_info("funcao de probe do joystick foi chamada!\n");
@@ -181,15 +191,15 @@ static int joystick_probe(struct platform_device *device) {
     return status;
   }
 
-  data = devm_gpiod_get_index(dev, "data", 0, GPIOD_IN);
+  pwm = devm_pwm_get(dev, "latch");
   if (IS_ERR(data)) {
-    dev_err(dev, "failed to get gpio data\n");
+    dev_err(dev, "failed to get pwm latch\n");
     return -1;
   }
 
-  latch = devm_gpiod_get_index(dev, "latch", 0, GPIOD_OUT_LOW); // TODO
-  if (IS_ERR(latch)) {
-    dev_err(dev, "failed to get gpio latch\n");
+  data = devm_gpiod_get_index(dev, "data", 0, GPIOD_IN);
+  if (IS_ERR(data)) {
+    dev_err(dev, "failed to get gpio data\n");
     return -1;
   }
 
@@ -200,12 +210,16 @@ static int joystick_probe(struct platform_device *device) {
   }
 
   status = create_input_device(dev);
+  pwm_config(pwm, 2500000, 5000000);  // 2.5ms HIGH, 2.5ms LOW
+  pwm_enable(pwm);  // START CONTINUOUS CLOCK
+  /*
   thread = kthread_run(nesjoy_thread_fn, dev, "joy rasp");
   if (IS_ERR(thread)) {
     int err = PTR_ERR(thread);
     thread = NULL;
     return err;
   }
+  */
   return status;
 }
 

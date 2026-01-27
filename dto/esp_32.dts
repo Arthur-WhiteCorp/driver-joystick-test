@@ -7,7 +7,8 @@
 		__overlay__ {
 			joy_stick:  joystick@0 {
 				compatible = "equipe03,esp32_joystick";
-				latch-gpios = <&gpio 17 0>;
+ 				pwms = <&pwm 0 5000000 0>; // gpio 12 em microsegundos
+				pwm-names = "latch"; // latch uses pwm
 				clk-gpios   = <&gpio 27 0>;
 				data-gpios  = <&gpio 22 0>;
 				message = "Have a good life";
@@ -16,7 +17,6 @@
 		};
 	};
 	__overrides__ {
-        latch_pin = <&joy_stick>, "latch-gpios:4";
         clk_pin   = <&joy_stick>, "clk-gpios:4";
         data_pin  = <&joy_stick>, "data-gpios:4";
     };
