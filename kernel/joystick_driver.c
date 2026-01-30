@@ -10,10 +10,8 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
-#include <linux/version.h>
-#include <linux/kthread.h>
-#include <linux/delay.h>
 #include <linux/pwm.h>
+#include <linux/version.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 #define RETURN_INT
@@ -129,9 +127,9 @@ static u16 nesjoy_read_bits(void) {
 
   // Pulso de LATCH: alto para carregar o shift register no "controle"
   gpiod_set_value_cansleep(latch, 1);
-  udelay(12);
+  mdelay(1);
   gpiod_set_value_cansleep(latch, 0);
-  udelay(6);
+  mdelay(1);
 
   // Primeiro bit já disponível, depois avançar com clock
   for (i = 0; i < NES_BITS; i++) {
@@ -143,9 +141,9 @@ static u16 nesjoy_read_bits(void) {
 
     // Pulso de clock para próximo bit
     gpiod_set_value_cansleep(clk, 1);
-    udelay(6);
+    mdelay(5);
     gpiod_set_value_cansleep(clk, 0);
-    udelay(6);
+    mdelay(5);
   }
   return bits;
 }
