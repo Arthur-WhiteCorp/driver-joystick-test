@@ -226,11 +226,27 @@ static int joystick_probe(struct platform_device *device) {
 
 #ifndef RETURN_INT
 static void joystick_remove(struct platform_device *device) {
-  input_unregister_device(joystick_input_dev);
+  if (thread) {
+    kthread_stop(thread);
+    thread = NULL;
+  }
+  if (joystick_input_dev) {
+    input_unregister_device(joystick_input_dev);
+    input_free_device(joystick_input_dev);
+    joystick_input_dev = NULL;
+  }
 }
 #else
 static int joystick_remove(struct platform_device *device) {
-  input_unregister_device(joystick_input_dev);
+  if (thread) {
+    kthread_stop(thread);
+    thread = NULL;
+  }
+  if (joystick_input_dev) {
+    input_unregister_device(joystick_input_dev);
+    input_free_device(joystick_input_dev);
+    joystick_input_dev = NULL;
+  }
   return 0;
 }
 #endif
