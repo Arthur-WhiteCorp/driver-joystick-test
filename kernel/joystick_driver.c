@@ -1,4 +1,5 @@
 #include "linux/dev_printk.h"
+#include "linux/input-event-codes.h"
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
@@ -54,8 +55,12 @@ static int create_input_device(const struct device *dev) {
   set_bit(BTN_Y, joystick_input_dev->keybit);
   set_bit(BTN_THUMBL, joystick_input_dev->keybit);
 
-  input_set_abs_params(joystick_input_dev, ABS_HAT0X, -1, 1, 0, 0);
-  input_set_abs_params(joystick_input_dev, ABS_HAT0Y, -1, 1, 0, 0);
+  // input_set_abs_params(joystick_input_dev, ABS_HAT0X, -1, 1, 0, 0);
+  // input_set_abs_params(joystick_input_dev, ABS_HAT0Y, -1, 1, 0, 0);
+
+  // Support for ABS_X and ABS_Y
+  input_set_abs_params(joystick_input_dev, ABS_X, -1, 1, 0, 0);
+  input_set_abs_params(joystick_input_dev, ABS_Y, -1, 1, 0, 0);
 
   joystick_input_dev->name = dev->driver->name;
   status = input_register_device(joystick_input_dev);
@@ -171,12 +176,19 @@ static int nesjoy_thread_fn(void *device) {
     int right = (state >> 7) & 0x1;
     int up = (state >> 4) & 0x1;
     int down = (state >> 5) & 0x1;
-    int hat_x = right - left; // -1 = left, 1 = right, 0 = neutral
-    int hat_y =
+    int hat_y = right - left; // -1 = left, 1 = right, 0 = neutral
+    int hat_x =
         down -
         up; // -1 = up, 1 = down, 0 = neutral (inverted for typical joystick)
-    input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
-    input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
+    // valid for games expecting a D-Pad as hat axes
+    // input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
+    // input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
+    // Report analog values for ABS_X and ABS_Y for compatibility with games
+    // expecting analog input and robotic arm
+    input_report_abs(joystick_input_dev, ABS_X,
+                     hat_x); // Lower 8 bits for X
+    input_report_abs(joystick_input_dev, ABS_Y,
+                     hat_y); // Upper 8 bits for Y
     input_sync(joystick_input_dev);
 
     if (poll_interval_ms < 1)
