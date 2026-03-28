@@ -29,8 +29,8 @@
 // static int poll_interval_ms = 2; // ~500 Hz
 struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
-struct gpio_desc *data, *clk;        // gpios
-struct pwm_device *pwm;
+struct gpio_desc *data, *data;        // gpios
+struct pwm_device *pwm_clk;    // clock using pwm
 struct pwm_state state;
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
@@ -75,13 +75,13 @@ err_free_dev:
 
 static int device_tree_parse(struct device *dev) {
   int status;
-  u32 latch_pwm[3];
-  u32 clk_gpio[3];
+  u32 clk_pwm[4];
+  u32 latch_gpio[3];
   u32 data_gpio[3];
   const char *message;
-
-  if (!device_property_present(dev, "clk-gpios")) {
-    dev_err(dev, "clk-gpios - property is not present!\n");
+  const char *pwm_name;
+  if (!device_property_present(dev, "latch-gpios")) {
+    dev_err(dev, "latch-gpios - property is not present!\n");
     return -1;
   }
   if (!device_property_present(dev, "data-gpios")) {
@@ -103,13 +103,12 @@ static int device_tree_parse(struct device *dev) {
 
 
 
-
-  status = device_property_read_u32_array(dev, "pwms", latch_pwm, 4); // returns 0 if sucessfull
+  status = device_property_read_u32_array(dev, "pwms", clk_pwm, 4); // returns 0 if sucessfull
   if (status) {
     dev_err(dev, "pwms - error reading property! \n");
     return status;
   }
-  status = device_property_read_u32_array(dev, "clk-gpios", clk_gpio, 3);
+  status = device_property_read_u32_array(dev, "latch-gpios", latch_gpio, 3);
   if (status) {
     dev_err(dev, "clk-gpios - error reading property! \n");
     return status;
@@ -124,9 +123,12 @@ static int device_tree_parse(struct device *dev) {
     dev_err(dev, "message - error reading property! \n");
     return status;
   }
-
-  dev_info(dev, "%u,%u,%u,%s\n", latch_pwm[1], clk_gpio[1], data_gpio[1],
-           message);
+  status = device_property_read_string(dev, "pwm-names", &pwm_name);
+  if (status) {
+    dev_err(dev, "pwm-names - error reading property! \n");
+    return status;
+  }
+  dev_info(dev, "%u,%u,%u,%u,%s,%s\n", clk_pwm[1], latch_gpio[1], data_gpio[1],clk_pwm[2],pwm_name,message);
 
   return status;
 }
