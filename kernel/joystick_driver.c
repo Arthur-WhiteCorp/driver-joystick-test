@@ -21,17 +21,11 @@
 #endif
 
 #define NES_BITS 11
-
-//	This driver follows the Linux kernel platform device model.
-//	used to integrate peripherals on many system-on-chip processors,
-//	https://docs.kernel.org/driver-api/driver-model/platform.html
-
-// static int poll_interval_ms = 2; // ~500 Hz
-struct task_struct *thread;
+//static struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
-struct gpio_desc *data, *data;        // gpios
-struct pwm_device *pwm_clk;    // clock using pwm
-struct pwm_state state;
+static struct gpio_desc *data, *latch;        // gpios
+static struct pwm_device *pwm_clk;    // clock using pwm
+static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 250000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = true, .usage_power = false};
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
@@ -92,20 +86,20 @@ static int device_tree_parse(struct device *dev) {
     dev_err(dev, "message - property is not present!\n");
     return -1;
   }
-  if (!device_property_present(dev, "pwms")) {
+  if (!device_property_present(dev, "pwm")) {
     dev_err(dev, "pwms - property is not present!\n");
     return -1;
   }
-  if (!device_property_present(dev, "pwm-names")) {
+  if (!device_property_present(dev, "pwm-name")) {
     dev_err(dev, "pwm-names - property is not present!\n");
     return -1;
   }
 
 
 
-  status = device_property_read_u32_array(dev, "pwms", clk_pwm, 4); // returns 0 if sucessfull
+  status = device_property_read_u32_array(dev, "pwm", clk_pwm, 4); // returns 0 if sucessfull
   if (status) {
-    dev_err(dev, "pwms - error reading property! \n");
+    dev_err(dev, "pwm - error reading property! \n");
     return status;
   }
   status = device_property_read_u32_array(dev, "latch-gpios", latch_gpio, 3);
@@ -193,8 +187,8 @@ static int joystick_probe(struct platform_device *device) {
     return status;
   }
 
-  pwm = devm_pwm_get(dev, "latch");
-  if (IS_ERR(data)) {
+  pwm_clk = devm_pwm_get(dev, "pwm");
+  if (IS_ERR(pwm_clk)) {
     dev_err(dev, "failed to get pwm latch\n");
     return -1;
   }
@@ -205,15 +199,22 @@ static int joystick_probe(struct platform_device *device) {
     return -1;
   }
 
-  clk = devm_gpiod_get_index(dev, "clk", 0, GPIOD_OUT_LOW); // TODO
-  if (IS_ERR(clk)) {
-    dev_err(dev, "failed to get gpio clk\n");
+  latch = devm_gpiod_get_index(dev, "latch", 0, GPIOD_OUT_LOW); // TODO
+  if (IS_ERR(latch)) {
+    dev_err(dev, "failed to get gpio lacth\n");
     return -1;
   }
-
+  
   status = create_input_device(dev);
-  pwm_config(pwm, 2500000, 5000000);  // 2.5ms HIGH, 2.5ms LOW
-  pwm_enable(pwm);  // START CONTINUOUS CLOCK
+  if (status) {
+    return status;
+  }
+  status = pwm_apply_state(pwm_clk, &state);
+  if (status) {
+    dev_err(dev, "failed to enable pwm");
+    return status;
+  }
+
   /*
   thread = kthread_run(nesjoy_thread_fn, dev, "joy rasp");
   if (IS_ERR(thread)) {
@@ -236,17 +237,23 @@ static int joystick_remove(struct platform_device *device) {
 }
 #endif
 
+//	This driver follows the Linux kernel platform device model.
+//	used to integrate peripherals on many system-on-chip processors,
+//	https://docs.kernel.org/driver-api/driver-model/platform.html
+
 /*Naming compatible devices*/
 static const struct of_device_id my_dev_ids[] = {
-    {.compatible = "equipe03,esp32_joystick"}, {} /*End of list*/
+    {.compatible = "TCC,Kronos"}, {} /*End of list*/
 };
+
+
 
 MODULE_DEVICE_TABLE(of, my_dev_ids);
 
 static struct platform_driver joystick_driver = {
     .probe = joystick_probe,
     .remove = joystick_remove,
-    .driver = {.name = "PLATFORM DRIVER FOR JOYSTICK",
+    .driver = {.name = "KRONOS",
                .of_match_table = my_dev_ids}};
 
 int __init joystick_init(void) {
