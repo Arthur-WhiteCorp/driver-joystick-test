@@ -1,5 +1,6 @@
 #include "linux/dev_printk.h"
 #include "linux/irq.h"
+#include "linux/input-event-codes.h"
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
@@ -11,10 +12,8 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
-#include <linux/version.h>
-#include <linux/kthread.h>
-#include <linux/delay.h>
 #include <linux/pwm.h>
+#include <linux/version.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 2, 0)
 #define RETURN_INT
@@ -29,9 +28,10 @@ static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 250000ull, 
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
-    BTN_A,         BTN_B,         BTN_SELECT,     BTN_START, BTN_DPAD_UP,
-    BTN_DPAD_DOWN, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_X,     BTN_Y, // C, D
-    BTN_THUMBL // Push-button
+    BTN_A, BTN_B, BTN_SELECT, BTN_START,
+    /* Up, Down, Left, Right will be handled as hat axes */
+    0, 0, 0, 0,              // placeholders for Up, Down, Left, Right
+    BTN_X, BTN_Y, BTN_THUMBL // C, D, Push-button
 };
 
 static int create_input_device(const struct device *dev) {
@@ -43,17 +43,22 @@ static int create_input_device(const struct device *dev) {
     return status;
   }
   set_bit(EV_KEY, joystick_input_dev->evbit);
+  set_bit(EV_ABS, joystick_input_dev->evbit);
   set_bit(BTN_A, joystick_input_dev->keybit);
   set_bit(BTN_B, joystick_input_dev->keybit);
   set_bit(BTN_SELECT, joystick_input_dev->keybit);
   set_bit(BTN_START, joystick_input_dev->keybit);
-  set_bit(BTN_DPAD_UP, joystick_input_dev->keybit);
-  set_bit(BTN_DPAD_DOWN, joystick_input_dev->keybit);
-  set_bit(BTN_DPAD_LEFT, joystick_input_dev->keybit);
-  set_bit(BTN_DPAD_RIGHT, joystick_input_dev->keybit);
   set_bit(BTN_X, joystick_input_dev->keybit);
   set_bit(BTN_Y, joystick_input_dev->keybit);
   set_bit(BTN_THUMBL, joystick_input_dev->keybit);
+
+  // input_set_abs_params(joystick_input_dev, ABS_HAT0X, -1, 1, 0, 0);
+  // input_set_abs_params(joystick_input_dev, ABS_HAT0Y, -1, 1, 0, 0);
+
+  // Support for ABS_X and ABS_Y
+  input_set_abs_params(joystick_input_dev, ABS_X, -1, 1, 0, 0);
+  input_set_abs_params(joystick_input_dev, ABS_Y, -1, 1, 0, 0);
+
   joystick_input_dev->name = dev->driver->name;
   status = input_register_device(joystick_input_dev);
   if (status) {
@@ -134,10 +139,10 @@ static u16 nesjoy_read_bits(void) {
   u16 bits = 0;
 
   // Pulso de LATCH: alto para carregar o shift register no "controle"
-  //gpiod_set_value_cansleep(latch, 1);
-  udelay(12);
-  //gpiod_set_value_cansleep(latch, 0);
-  udelay(6);
+  gpiod_set_value_cansleep(latch, 1);
+  mdelay(1);
+  gpiod_set_value_cansleep(latch, 0);
+  mdelay(1);
 
   // Primeiro bit já disponível, depois avançar com clock
   for (i = 0; i < NES_BITS; i++) {
@@ -149,9 +154,9 @@ static u16 nesjoy_read_bits(void) {
 
     // Pulso de clock para próximo bit
     gpiod_set_value_cansleep(clk, 1);
-    udelay(6);
+    mdelay(1);
     gpiod_set_value_cansleep(clk, 0);
-    udelay(6);
+    mdelay(1);
   }
   return bits;
 }
@@ -163,11 +168,33 @@ static int nesjoy_thread_fn(void *device) {
 
     dev_info(device, " joy thread running! %d\n", state);
     // Reportar botões
-    for (int i = 0; i < NES_BITS; i++) {
-      uint pressed = (state >> i) & 0x1;
-      dev_info(device, " Button %d: %d\n", i, pressed);
-      input_report_key(joystick_input_dev, nes_keycodes[i], pressed);
-    }
+    // Report buttons (A, B, Select, Start, C, D, Push)
+    input_report_key(joystick_input_dev, BTN_A, (state >> 0) & 0x1);
+    input_report_key(joystick_input_dev, BTN_B, (state >> 1) & 0x1);
+    input_report_key(joystick_input_dev, BTN_SELECT, (state >> 2) & 0x1);
+    input_report_key(joystick_input_dev, BTN_START, (state >> 3) & 0x1);
+    input_report_key(joystick_input_dev, BTN_X, (state >> 8) & 0x1);
+    input_report_key(joystick_input_dev, BTN_Y, (state >> 9) & 0x1);
+    input_report_key(joystick_input_dev, BTN_THUMBL, (state >> 10) & 0x1);
+
+    // Report D-Pad as hat axes
+    int left = (state >> 6) & 0x1;
+    int right = (state >> 7) & 0x1;
+    int up = (state >> 4) & 0x1;
+    int down = (state >> 5) & 0x1;
+    int hat_y = right - left; // -1 = left, 1 = right, 0 = neutral
+    int hat_x =
+        down -
+        up; // -1 = up, 1 = down, 0 = neutral (inverted for typical joystick)
+    // valid for games expecting a D-Pad as hat axes
+    // input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
+    // input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
+    // Report analog values for ABS_X and ABS_Y for compatibility with games
+    // expecting analog input and robotic arm
+    input_report_abs(joystick_input_dev, ABS_X,
+                     hat_x); // Lower 8 bits for X
+    input_report_abs(joystick_input_dev, ABS_Y,
+                     hat_y); // Upper 8 bits for Y
     input_sync(joystick_input_dev);
 
     if (poll_interval_ms < 1)
@@ -228,11 +255,27 @@ static int joystick_probe(struct platform_device *device) {
 
 #ifndef RETURN_INT
 static void joystick_remove(struct platform_device *device) {
-  input_unregister_device(joystick_input_dev);
+  if (thread) {
+    kthread_stop(thread);
+    thread = NULL;
+  }
+  if (joystick_input_dev) {
+    input_unregister_device(joystick_input_dev);
+    input_free_device(joystick_input_dev);
+    joystick_input_dev = NULL;
+  }
 }
 #else
 static int joystick_remove(struct platform_device *device) {
-  input_unregister_device(joystick_input_dev);
+  if (thread) {
+    kthread_stop(thread);
+    thread = NULL;
+  }
+  if (joystick_input_dev) {
+    input_unregister_device(joystick_input_dev);
+    input_free_device(joystick_input_dev);
+    joystick_input_dev = NULL;
+  }
   return 0;
 }
 #endif

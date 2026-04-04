@@ -43,6 +43,11 @@ volatile bool dpadUp = false, dpadDown = false, dpadLeft = false, dpadRight = fa
 int axBuf[SAMPLES] = {0}, ayBuf[SAMPLES] = {0};
 int axIdx = 0, ayIdx = 0;
 
+// Counters for interrupts
+volatile unsigned long latchCount = 0;
+volatile unsigned long clockCount = 0;
+volatile unsigned long lastClockCount = 0;
+
 /* =================== Snapshot =================== */
 
 volatile uint16_t shift_reg = 0; // 1 = pressed (interno); DATA sai invertido (ativo em 0)
@@ -99,11 +104,9 @@ void updateDpadFromAxes() {
     dpadDown = true;
     dpadRight = true;
   }
-  
 }
 
-uint16_t buildSnapshot()
-{
+uint16_t buildSnapshot() {
   uint16_t s = 0;
   aA = 1;
   aB = 0;
@@ -150,13 +153,16 @@ void IRAM_ATTR isrLatch()
     shift_reg = buildSnapshot();
     shift_idx = 0;
     writeDataBit((shift_reg >> 0) & 0x1);
+
+    latchCount++;
+    lastClockCount = clockCount;
+    clockCount = 0;
   }
   lastLatch = v;
 }
 
 void IRAM_ATTR isrClock()
-{
-  int v = digitalRead(PIN_CLOCK);
+{ int v = digitalRead(PIN_CLOCK);
   if (lastClock == LOW && v == HIGH) {
     shift_idx++;
     if (shift_idx >= NES_BITS) {
@@ -164,6 +170,8 @@ void IRAM_ATTR isrClock()
     } else {
       writeDataBit((shift_reg >> shift_idx) & 0x1);
     }
+
+    clockCount++;
   }
   lastClock = v;
 }
@@ -207,29 +215,11 @@ unsigned long lastCenterMs = 0;
 void loop()
 {
   // Botões digitais
-  aA    = readBtn(PIN_A);
-  aB    = readBtn(PIN_B);
-  aSEL  = readBtn(PIN_SELECT);
-  aSTA  = readBtn(PIN_START);
-  aC    = readBtn(PIN_C);
-  aD    = readBtn(PIN_D);
-  aPUSH = readBtn(PIN_PUSH); // novo
+  // Print latch and clock counts
+  Serial.print("Latch count: ");
+  Serial.print(latchCount);
+  Serial.print(" | Clocks per last latch: ");
+  Serial.println(lastClockCount);
 
-  // Eixos (média + histerese -> d-pad)
-  // int rx = analogRead(PIN_VRX);
-  // int ry = analogRead(PIN_VRY);
-  // int ax = movingAvg(axBuf, axIdx, rx);
-  // int ay = movingAvg(ayBuf, ayIdx, ry);
-  //
-  // bool noButtons = !(aA|aB|aSEL|aSTA|aC|aD|aPUSH);
-  // bool nearCenter = (abs(ax - centerX) < (DEADZONE/2)) && (abs(ay - centerY) < (DEADZONE/2));
-  // unsigned long now = millis();
-  // if (noButtons && nearCenter && (now - lastCenterMs > 800)) {
-  //   centerX = (centerX*7 + ax) / 8;
-  //   centerY = (centerY*7 + ay) / 8;
-  //   lastCenterMs = now;
-  // }
-
-  updateDpadFromAxes();
   delay(100);
 }
