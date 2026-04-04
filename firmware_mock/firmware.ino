@@ -87,20 +87,26 @@ void updateDpadFromAxes(int rawX, int rawY) {
 uint16_t buildSnapshot()
 {
   uint16_t s = 0;
-  s |= (1 << 0); // a
-  s |= (0 << 1); // b
-  s |= (0 << 2); // sel
-  s |= (0 << 3); // start
-  s |= (1 << 4); // dpad up
-  s |= (0 << 5); // dpad down
-  s |= (0 << 6); // dpad left
-  s |= (0 << 7); // dpad right
-  s |= (0 << 8); // c / x
-  s |= (1 << 9); // d / y
-  s |= (aPUSH <<10); // NOVO bit 10
+  uint8_t UP    = dpadUp    ? 1 : 0;
+  uint8_t DOWN  = dpadDown  ? 1 : 0;
+  uint8_t LEFT  = dpadLeft  ? 1 : 0;
+  uint8_t RIGHT = dpadRight ? 1 : 0;
 
+  s |= (aA    << 0);
+  s |= (aB    << 1);
+  s |= (aSEL  << 2);
+  s |= (aSTA  << 3);
+  s |= (UP    << 4);
+  s |= (DOWN  << 5);
+  s |= (LEFT  << 6);
+  s |= (RIGHT << 7);
+  s |= (aC    << 8);
+  s |= (aD    << 9);
+  s |= (aPUSH <<10); // NOVO bit 10
   return s;
 }
+
+
 
 inline void writeDataBit(uint8_t bit) {
   // ativo-em-0: 1 (pressed) => LOW na linha DATA

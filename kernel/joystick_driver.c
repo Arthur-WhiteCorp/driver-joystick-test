@@ -1,6 +1,7 @@
 #include "linux/dev_printk.h"
 #include "linux/irq.h"
 #include "linux/input-event-codes.h"
+#include "linux/stddef.h"
 #include <asm/io.h>
 #include <linux/delay.h>
 #include <linux/gpio/consumer.h>
@@ -20,11 +21,12 @@
 #endif
 
 #define NES_BITS 11
-//static struct task_struct *thread;
+
+static struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
 static struct gpio_desc *data, *latch;        // gpios
 static struct pwm_device *pwm_clk;    // clock using pwm
-static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 250000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = true, .usage_power = false};
+static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 250000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = false, .usage_power = false};
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
@@ -132,8 +134,10 @@ static int device_tree_parse(struct device *dev) {
   return status;
 }
 
-/*
+
 // Lê NES_BITS (11) bits, ativo-em-0 (0 = pressionado no fio DATA)
+
+
 static u16 nesjoy_read_bits(void) {
   int i;
   u16 bits = 0;
@@ -143,21 +147,20 @@ static u16 nesjoy_read_bits(void) {
   mdelay(1);
   gpiod_set_value_cansleep(latch, 0);
   mdelay(1);
-
+  
+  pwm_enable(pwm_clk);
   // Primeiro bit já disponível, depois avançar com clock
   for (i = 0; i < NES_BITS; i++) {
     int v = gpiod_get_value_cansleep(data);
-    if (v < 0)
+    if (v < 0){
       v = 1; // em caso de erro, trata como solto
+    }
     // 0 = pressed no fio, armazenamos pressed = 1
     bits |= ((v == 0) ? 1 : 0) << i;
 
-    // Pulso de clock para próximo bit
-    gpiod_set_value_cansleep(clk, 1);
-    mdelay(1);
-    gpiod_set_value_cansleep(clk, 0);
-    mdelay(1);
+    mdelay(5);
   }
+  pwm_disable(pwm_clk);
   return bits;
 }
 
@@ -166,7 +169,7 @@ static int nesjoy_thread_fn(void *device) {
   while (!kthread_should_stop()) {
     u16 state = nesjoy_read_bits();
 
-    dev_info(device, " joy thread running! %d\n", state);
+    dev_info(device, "thread running! %d\n", state);
     // Reportar botões
     // Report buttons (A, B, Select, Start, C, D, Push)
     input_report_key(joystick_input_dev, BTN_A, (state >> 0) & 0x1);
@@ -196,14 +199,10 @@ static int nesjoy_thread_fn(void *device) {
     input_report_abs(joystick_input_dev, ABS_Y,
                      hat_y); // Upper 8 bits for Y
     input_sync(joystick_input_dev);
-
-    if (poll_interval_ms < 1)
-      poll_interval_ms = 1;
-    msleep(poll_interval_ms);
   }
   return 0;
 }
-*/
+
 static int joystick_probe(struct platform_device *device) {
   int status;
   pr_info("funcao de probe do joystick foi chamada!\n");
@@ -216,7 +215,7 @@ static int joystick_probe(struct platform_device *device) {
 
   pwm_clk = devm_pwm_get(dev, "pwm");
   if (IS_ERR(pwm_clk)) {
-    dev_err(dev, "failed to get pwm latch\n");
+    dev_err(dev, "failed to get pwm clock\n");
     return -1;
   }
 
@@ -238,18 +237,18 @@ static int joystick_probe(struct platform_device *device) {
   }
   status = pwm_apply_state(pwm_clk, &state);
   if (status) {
-    dev_err(dev, "failed to enable pwm");
+    dev_err(dev, "failed to apply initial pwm state");
     return status;
   }
 
-  /*
+  
   thread = kthread_run(nesjoy_thread_fn, dev, "joy rasp");
   if (IS_ERR(thread)) {
     int err = PTR_ERR(thread);
     thread = NULL;
     return err;
   }
-  */
+  
   return status;
 }
 
@@ -267,10 +266,12 @@ static void joystick_remove(struct platform_device *device) {
 }
 #else
 static int joystick_remove(struct platform_device *device) {
+ 
   if (thread) {
     kthread_stop(thread);
     thread = NULL;
   }
+  
   if (joystick_input_dev) {
     input_unregister_device(joystick_input_dev);
     input_free_device(joystick_input_dev);
