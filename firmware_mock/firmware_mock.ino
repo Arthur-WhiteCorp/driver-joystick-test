@@ -7,9 +7,9 @@
 #define NES_BITS 11
 
 // Pinos do protocolo (host -> ESP32: LATCH/CLOCK, ESP32 -> host: DATA)
-const int PIN_LATCH = 12; // entrada
-const int PIN_CLOCK = 14; // entrada
-const int PIN_DATA  = 27;  // saída
+const int PIN_LATCH = 2; // entrada
+const int PIN_CLOCK = 4; // entrada
+const int PIN_DATA  = 5;  // saída
 
 // Botões digitais (GND = pressionado)
 const int PIN_A      = 32;
