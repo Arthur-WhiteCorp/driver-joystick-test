@@ -27,7 +27,8 @@ Para obter o kernel aosp utilizado: [GloDroid Release](https://github.com/GloDro
 cd ~
 cd Downloads
 tar -xvf raspberry-pi-2023w49.tar.gz 
-mv raspberry-pi-2023w49
+mv raspberry-pi-2023w49 ~
+cd ~
 cd raspberry-pi-2023w49
 ./unfold_aosp.sh
 ````
@@ -57,7 +58,7 @@ sudo apt install bear
 │   ├── firmware           (firmware real)
 │   └── firmware_mock      (firmware para teste)
 └── kernel/                      (código do módulo)
-    ├── testLKM.c
+    ├── joystick_driver.c
     ├── Makefile
     └── compile_commands.json -> ../compile_commands.json
 ```
