@@ -6,7 +6,7 @@ O projeto já vem configurado para facilitar **compilação**, **carregamento** 
 ---
 
 ## 📋 Requisitos
-- Imagem raspberry-vanilla
+- Imagem 2023w49 (GloDroid)
 - Linux (testado em Ubuntu)
 - Headers do kernel instalados
 - Kernel do android 14
@@ -14,32 +14,22 @@ O projeto já vem configurado para facilitar **compilação**, **carregamento** 
 - `make`
 - (Opcional, mas recomendado) `bear` para suporte a clangd
 
-Para Obter a imagem utilizada:
-
-```bash
-cd ~
-mkdir raspberry_aosp
-repo init -u https://android.googlesource.com/platform/manifest -b android-14.0.0_r67 --depth=1
-curl -o .repo/local_manifests/manifest_brcm_rpi.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_local_manifest/android-14.0/manifest_brcm_rpi.xml --create-dirs
-curl -o .repo/local_manifests/remove_projects.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_local_manifest/android-14.0/remove_projects.xml
-repo sync
-```
-Informações extras de como fazer uma imagem e por no dispositivo: [repositório do aosp para rpi4](https://github.com/raspberry-vanilla/android_local_manifest/tree/android-14.0)
+Para Obter a imagem utilizada: [GloDroid Release](https://github.com/GloDroidCommunity/raspberry-pi/releases/tag/2023w49)
 
 Para instalar os headers do kernel:
 
 ```bash
 sudo apt install linux-headers-$(uname -r)
 ````
-Para obter o kernel aosp utilizado:
+Para obter o kernel aosp utilizado: [GloDroid Release](https://github.com/GloDroidCommunity/raspberry-pi/releases/tag/2023w49)
 
 ```bash
 cd ~
-mkdir raspberry_kernel
-cd raspberry_kernel
-repo init -u https://android.googlesource.com/kernel/manifest -b common-android14-6.1-lts
-curl -o .repo/local_manifests/manifest_brcm_rpi.xml -L https://raw.githubusercontent.com/raspberry-vanilla/android_kernel_manifest/android-14.0/manifest_brcm_rpi.xml --create-dirs
-repo sync
+cd Downloads
+tar -xvf raspberry-pi-2023w49.tar.gz 
+mv raspberry-pi-2023w49
+cd raspberry-pi-2023w49
+./unfold_aosp.sh
 ````
 Para compilar o Driver para AOSP:
 ```bash
@@ -63,7 +53,9 @@ sudo apt install bear
 ├── compile_commands.json        (gerado automaticamente)
 ├── .clangd                      (configuração do clangd)
 ├── dto/                   (device tree overlay para o joystick do ESP32)
-├── firmware_mock/                   (firmware usado para testar o driver)
+├── firmwares
+│   ├── firmware           (firmware real)
+│   └── firmware_mock      (firmware para teste)
 └── kernel/                      (código do módulo)
     ├── testLKM.c
     ├── Makefile
@@ -99,7 +91,7 @@ Para compilar para dispositivos Android, primeiro configure o caminho do kernel 
 
 ```makefile
 # Atualize este caminho para onde seu kernel AOSP está localizado
-AOSP_KERNEL = /caminho/para/seu/raspberry_kernel/common
+AOSP_KERNEL = /home/$(USER)/raspberry-pi-2023w49/aosptree/glodroid/kernel/broadcom
 ```
 
 ### 🚀 Fluxo de Trabalho Recomendado:
