@@ -102,13 +102,87 @@ static int device_tree_parse(struct device *dev) {
 
 	dev_info(dev, "%u,%u,%u,%s\n", latch_gpio[1], clk_gpio[1], data_gpio[1],message);
 
-	return status;
+  	return status;
+}
+
+// Lê NES_BITS (11) bits, ativo-em-0 (0 = pressionado no fio DATA)
+static u16 nesjoy_read_bits(void) {
+  int i;
+  u16 bits = 0;
+
+  // Pulso de LATCH: alto para carregar o shift register no "controle"
+  gpiod_set_value_cansleep(latch, 1);
+  mdelay(1);
+  gpiod_set_value_cansleep(latch, 0);
+  mdelay(1);
+
+  // Primeiro bit já disponível, depois avançar com clock
+  for (i = 0; i < NES_BITS; i++) {
+    int v = gpiod_get_value_cansleep(data);
+    if (v < 0)
+      v = 1; // em caso de erro, trata como solto
+    // 0 = pressed no fio, armazenamos pressed = 1
+    bits |= ((v == 0) ? 1 : 0) << i;
+
+    // Pulso de clock para próximo bit
+    gpiod_set_value_cansleep(clk, 1);
+    mdelay(1);
+    gpiod_set_value_cansleep(clk, 0);
+    mdelay(1);
+  }
+  return bits;
+}
+
+static int nesjoy_thread_fn(void *device) {
+
+  while (!kthread_should_stop()) {
+    int left, right, up, down, hat_y, hat_x;
+    u16 state = nesjoy_read_bits();
+
+    dev_info(device, " joy thread running! %d\n", state);
+    // Reportar botões
+    // Report buttons (A, B, Select, Start, C, D, Push)
+    input_report_key(joystick_input_dev, BTN_A, (state >> 0) & 0x1);
+    input_report_key(joystick_input_dev, BTN_B, (state >> 1) & 0x1);
+    input_report_key(joystick_input_dev, BTN_SELECT, (state >> 2) & 0x1);
+    input_report_key(joystick_input_dev, BTN_START, (state >> 3) & 0x1);
+    input_report_key(joystick_input_dev, BTN_X, (state >> 8) & 0x1);
+    input_report_key(joystick_input_dev, BTN_Y, (state >> 9) & 0x1);
+    input_report_key(joystick_input_dev, BTN_THUMBL, (state >> 10) & 0x1);
+
+    // Report D-Pad as hat axes
+    left = (state >> 6) & 0x1;
+    right = (state >> 7) & 0x1;
+    up = (state >> 4) & 0x1;
+    down = (state >> 5) & 0x1;
+    hat_y = right - left; // -1 = left, 1 = right, 0 = neutral
+    hat_x =
+        down -
+        up; // -1 = up, 1 = down, 0 = neutral (inverted for typical joystick)
+    // valid for games expecting a D-Pad as hat axes
+    // input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
+    // input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
+    // Report analog values for ABS_X and ABS_Y for compatibility with games
+    // expecting analog input and robotic arm
+    input_report_abs(joystick_input_dev, ABS_X,
+                     hat_x); // Lower 8 bits for X
+    input_report_abs(joystick_input_dev, ABS_Y,
+                     hat_y); // Upper 8 bits for Y
+    input_sync(joystick_input_dev);
+
+    if (poll_interval_ms < 1)
+      poll_interval_ms = 1;
+    msleep(poll_interval_ms);
+  }
+  return 0;
 }
 
 static int joystick_probe(struct platform_device *device) {
-	int status;
-	pr_info("funcao de probe do joystick foi chamada!\n");
-	struct device *dev = &(device->dev);
+  int status;
+  struct device *dev; 
+  pr_info("funcao de probe do joystick foi chamada!\n");
+  dev = &(device->dev);
+>>>>>>> 3447dcf (Mudando para glodroid)
 
 	status = device_tree_parse(dev); // returns 0 if sucessfull
 	if (status) {

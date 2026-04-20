@@ -7,7 +7,7 @@ ARCH = arm64
 # vazio CROSS_COMPILE pois estamos utilizando clang
 CROSS_COMPILE = 
 
-AOSP_KERNEL = /home/arthur/raspberry_kernel/common
+AOSP_KERNEL = /home/$(USER)/raspberry-pi-2023w49/aosptree/glodroid/kernel/broadcom
 
 # Usando o clang-17 
 CLANG = clang-17
@@ -65,7 +65,19 @@ config:
 	     $(RPI4_DEFCONFIG) && \
 	./scripts/config \
 		--enable CONFIG_MODVERSIONS \
-		--enable CONFIG_MODULES
+		--enable CONFIG_MODULES \
+		--disable CONFIG_EXTRA_FIRMWARE \
+		--set-str CONFIG_EXTRA_FIRMWARE "" \
+		--set-str CONFIG_EXTRA_FIRMWARE_DIR "" && \
+	make ARCH=$(ARCH) \
+	     CC="$(CC)" \
+	     LD="$(LD)" \
+	     OBJCOPY="$(OBJCOPY)" \
+	     OBJDUMP="$(OBJDUMP)" \
+	     AR="$(AR)" \
+	     NM="$(NM)" \
+	     STRIP="$(STRIP)" \
+	     modules_prepare
 
 # Compila todos os módulos do kernel AOSP (incluindo exports) com Bear
 aosp-kernel: config 
