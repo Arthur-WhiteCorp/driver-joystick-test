@@ -7,9 +7,9 @@
 #define NES_BITS 11
 
 // Pinos do protocolo (host -> ESP32: LATCH/CLOCK, ESP32 -> host: DATA)
-const int PIN_LATCH = 12; // entrada
-const int PIN_CLOCK = 14; // entrada
-const int PIN_DATA  = 27;  // saída
+const int PIN_LATCH = 2; // entrada
+const int PIN_CLOCK = 4; // entrada
+const int PIN_DATA  = 5;  // saída
 
 // Botões digitais (GND = pressionado)
 const int PIN_A      = 32;
@@ -43,6 +43,11 @@ volatile bool dpadUp = false, dpadDown = false, dpadLeft = false, dpadRight = fa
 int axBuf[SAMPLES] = {0}, ayBuf[SAMPLES] = {0};
 int axIdx = 0, ayIdx = 0;
 
+// Counters for interrupts
+volatile unsigned long latchCount = 0;
+volatile unsigned long clockCount = 0;
+volatile unsigned long lastClockCount = 0;
+
 /* =================== Snapshot =================== */
 
 volatile uint16_t shift_reg = 0; // 1 = pressed (interno); DATA sai invertido (ativo em 0)
@@ -53,7 +58,9 @@ volatile uint8_t aA=0, aB=0, aSEL=0, aSTA=0, aC=0, aD=0, aPUSH=0;
 
 /* =================== Utilidades =================== */
 
-inline uint8_t readBtn(int pin) { return (digitalRead(pin) == LOW) ? 1 : 0; }
+// inline uint8_t readBtn(int pin) { return (digitalRead(pin) == LOW) ? 1 : 0; }
+inline uint8_t readBtn(int pin) { return random(0, 2); }
+
 
 int movingAvg(int *buf, int &idx, int sample) {
   buf[idx] = sample;
@@ -63,35 +70,56 @@ int movingAvg(int *buf, int &idx, int sample) {
   return (int)(sum / SAMPLES);
 }
 
-void updateDpadFromAxes(int rawX, int rawY) {
-  int dx = rawX - centerX;
-  int dy = rawY - centerY;
+// void updateDpadFromAxes(int rawX, int rawY) {
+//   int dx = rawX - centerX;
+//   int dy = rawY - centerY;
 
-  if (!dpadLeft)  { dpadLeft  = (dx < -(DEADZONE + TRIG)); }
-  else            { dpadLeft  = (dx < -(DEADZONE + TRIG - HYST)); }
+//   if (!dpadLeft)  { dpadLeft  = (dx < -(DEADZONE + TRIG)); }
+//   else            { dpadLeft  = (dx < -(DEADZONE + TRIG - HYST)); }
 
-  if (!dpadRight) { dpadRight = (dx >  (DEADZONE + TRIG)); }
-  else            { dpadRight = (dx >  (DEADZONE + TRIG - HYST)); }
+//   if (!dpadRight) { dpadRight = (dx >  (DEADZONE + TRIG)); }
+//   else            { dpadRight = (dx >  (DEADZONE + TRIG - HYST)); }
 
-  if (!dpadUp)    { dpadUp    = (dy < -(DEADZONE + TRIG)); }
-  else            { dpadUp    = (dy < -(DEADZONE + TRIG - HYST)); }
+//   if (!dpadUp)    { dpadUp    = (dy < -(DEADZONE + TRIG)); }
+//   else            { dpadUp    = (dy < -(DEADZONE + TRIG - HYST)); }
 
-  if (!dpadDown)  { dpadDown  = (dy >  (DEADZONE + TRIG)); }
-  else            { dpadDown  = (dy >  (DEADZONE + TRIG - HYST)); }
+//   if (!dpadDown)  { dpadDown  = (dy >  (DEADZONE + TRIG)); }
+//   else            { dpadDown  = (dy >  (DEADZONE + TRIG - HYST)); }
 
-  // Evitar opostos simultâneos
-  if (dpadLeft && dpadRight)  { dpadLeft  = (dx < 0); dpadRight = !dpadLeft; }
-  if (dpadUp   && dpadDown)   { dpadUp    = (dy < 0); dpadDown  = !dpadUp;   }
+//   // Evitar opostos simultâneos
+//   if (dpadLeft && dpadRight)  { dpadLeft  = (dx < 0); dpadRight = !dpadLeft; }
+//   if (dpadUp   && dpadDown)   { dpadUp    = (dy < 0); dpadDown  = !dpadUp;   }
+// }
+
+void updateDpadFromAxes() {
+  long randInt = random(0, 2);
+  if (randInt == 1) {
+    dpadLeft = true;
+    dpadUp = true;
+    dpadDown = false;
+    dpadRight = false;
+  } else {
+    dpadLeft = false;
+    dpadUp = false;
+    dpadDown = true;
+    dpadRight = true;
+  }
 }
 
-uint16_t buildSnapshot()
-{
+uint16_t buildSnapshot() {
   uint16_t s = 0;
-  uint8_t UP    = dpadUp    ? 1 : 0;
-  uint8_t DOWN  = dpadDown  ? 1 : 0;
-  uint8_t LEFT  = dpadLeft  ? 1 : 0;
-  uint8_t RIGHT = dpadRight ? 1 : 0;
-
+  aA = 1;
+  aB = 0;
+  aSEL = 0;
+  aSTA = 0;
+  uint8_t UP    = 1;
+  uint8_t DOWN  = 0;
+  uint8_t LEFT  = 1;
+  uint8_t RIGHT = 0;
+  aC = 1;
+  aD = 1;
+  aPUSH = 0;
+  
   s |= (aA    << 0);
   s |= (aB    << 1);
   s |= (aSEL  << 2);
@@ -103,10 +131,9 @@ uint16_t buildSnapshot()
   s |= (aC    << 8);
   s |= (aD    << 9);
   s |= (aPUSH <<10); // NOVO bit 10
+
   return s;
 }
-
-
 
 inline void writeDataBit(uint8_t bit) {
   // ativo-em-0: 1 (pressed) => LOW na linha DATA
@@ -117,6 +144,7 @@ inline void writeDataBit(uint8_t bit) {
 
 volatile int lastLatch = HIGH;
 volatile int lastClock = LOW;
+volatile int v;
 
 void IRAM_ATTR isrLatch()
 {
@@ -125,13 +153,16 @@ void IRAM_ATTR isrLatch()
     shift_reg = buildSnapshot();
     shift_idx = 0;
     writeDataBit((shift_reg >> 0) & 0x1);
+
+    latchCount++;
+    lastClockCount = clockCount;
+    clockCount = 0;
   }
   lastLatch = v;
 }
 
 void IRAM_ATTR isrClock()
-{
-  int v = digitalRead(PIN_CLOCK);
+{ int v = digitalRead(PIN_CLOCK);
   if (lastClock == LOW && v == HIGH) {
     shift_idx++;
     if (shift_idx >= NES_BITS) {
@@ -139,6 +170,8 @@ void IRAM_ATTR isrClock()
     } else {
       writeDataBit((shift_reg >> shift_idx) & 0x1);
     }
+
+    clockCount++;
   }
   lastClock = v;
 }
@@ -147,11 +180,12 @@ void IRAM_ATTR isrClock()
 
 void setup()
 {
+  Serial.begin(115200);
   // Protocolo
   pinMode(PIN_LATCH, INPUT_PULLUP);
   pinMode(PIN_CLOCK, INPUT_PULLUP);
   pinMode(PIN_DATA,  OUTPUT);
-  digitalWrite(PIN_DATA, HIGH);
+  // digitalWrite(PIN_DATA, HIGH);
 
   // Botões
   pinMode(PIN_A,      INPUT_PULLUP);
@@ -163,15 +197,15 @@ void setup()
   pinMode(PIN_PUSH,   INPUT_PULLUP);
 
   // ADC
-  analogReadResolution(12);
-  analogSetAttenuation(ADC_11db);
-
-  int initX = analogRead(PIN_VRX);
-  int initY = analogRead(PIN_VRY);
-  for (int i=0;i<SAMPLES;i++){ axBuf[i]=initX; ayBuf[i]=initY; }
-  centerX = movingAvg(axBuf, axIdx, initX);
-  centerY = movingAvg(ayBuf, ayIdx, initY);
-
+  // analogReadResolution(12);
+  // analogSetAttenuation(ADC_11db);
+  //
+  // int initX = analogRead(PIN_VRX);
+  // int initY = analogRead(PIN_VRY);
+  // for (int i=0;i<SAMPLES;i++){ axBuf[i]=initX; ayBuf[i]=initY; }
+  // centerX = movingAvg(axBuf, axIdx, initX);
+  // centerY = movingAvg(ayBuf, ayIdx, initY);
+  //
   attachInterrupt(digitalPinToInterrupt(PIN_LATCH), isrLatch, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PIN_CLOCK), isrClock, CHANGE);
 }
@@ -181,30 +215,11 @@ unsigned long lastCenterMs = 0;
 void loop()
 {
   // Botões digitais
-  aA    = readBtn(PIN_A);
-  aB    = readBtn(PIN_B);
-  aSEL  = readBtn(PIN_SELECT);
-  aSTA  = readBtn(PIN_START);
-  aC    = readBtn(PIN_C);
-  aD    = readBtn(PIN_D);
-  aPUSH = readBtn(PIN_PUSH); // novo
+  // Print latch and clock counts
+  Serial.print("Latch count: ");
+  Serial.print(latchCount);
+  Serial.print(" | Clocks per last latch: ");
+  Serial.println(lastClockCount);
 
-  // Eixos (média + histerese -> d-pad)
-  int rx = analogRead(PIN_VRX);
-  int ry = analogRead(PIN_VRY);
-  int ax = movingAvg(axBuf, axIdx, rx);
-  int ay = movingAvg(ayBuf, ayIdx, ry);
-
-  bool noButtons = !(aA|aB|aSEL|aSTA|aC|aD|aPUSH);
-  bool nearCenter = (abs(ax - centerX) < (DEADZONE/2)) && (abs(ay - centerY) < (DEADZONE/2));
-  unsigned long now = millis();
-  if (noButtons && nearCenter && (now - lastCenterMs > 800)) {
-    centerX = (centerX*7 + ax) / 8;
-    centerY = (centerY*7 + ay) / 8;
-    lastCenterMs = now;
-  }
-
-  updateDpadFromAxes(ax, ay);
-
-  delay(1);
+  delay(100);
 }

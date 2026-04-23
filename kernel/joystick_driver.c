@@ -167,6 +167,7 @@ static u16 nesjoy_read_bits(void) {
 static int nesjoy_thread_fn(void *device) {
 
   while (!kthread_should_stop()) {
+    int left, right, up, down, hat_y, hat_x;
     u16 state = nesjoy_read_bits();
 
     dev_info(device, "thread running! %d\n", state);
@@ -181,19 +182,15 @@ static int nesjoy_thread_fn(void *device) {
     input_report_key(joystick_input_dev, BTN_THUMBL, (state >> 10) & 0x1);
 
     // Report D-Pad as hat axes
-    int left = (state >> 6) & 0x1;
-    int right = (state >> 7) & 0x1;
-    int up = (state >> 4) & 0x1;
-    int down = (state >> 5) & 0x1;
-    int hat_y = right - left; // -1 = left, 1 = right, 0 = neutral
-    int hat_x =
-        down -
-        up; // -1 = up, 1 = down, 0 = neutral (inverted for typical joystick)
-    // valid for games expecting a D-Pad as hat axes
-    // input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
-    // input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
-    // Report analog values for ABS_X and ABS_Y for compatibility with games
-    // expecting analog input and robotic arm
+    left = (state >> 6) & 0x1;
+    right = (state >> 7) & 0x1;
+    up = (state >> 4) & 0x1;
+    down = (state >> 5) & 0x1;
+    hat_x = right - left; // -1 = left, 1 = right, 0 = neutral
+    hat_y =
+        up -
+	down; 
+
     input_report_abs(joystick_input_dev, ABS_X,
                      hat_x); // Lower 8 bits for X
     input_report_abs(joystick_input_dev, ABS_Y,
@@ -205,8 +202,9 @@ static int nesjoy_thread_fn(void *device) {
 
 static int joystick_probe(struct platform_device *device) {
   int status;
+  struct device *dev; 
   pr_info("funcao de probe do joystick foi chamada!\n");
-  struct device *dev = &(device->dev);
+  dev = &(device->dev);
 
   status = device_tree_parse(dev); // returns 0 if sucessfull
   if (status) {
