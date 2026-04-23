@@ -177,15 +177,11 @@ static int nesjoy_thread_fn(void *device) {
     right = (state >> 7) & 0x1;
     up = (state >> 4) & 0x1;
     down = (state >> 5) & 0x1;
-    hat_y = right - left; // -1 = left, 1 = right, 0 = neutral
-    hat_x =
-        down -
-        up; // -1 = up, 1 = down, 0 = neutral (inverted for typical joystick)
-    // valid for games expecting a D-Pad as hat axes
-    // input_report_abs(joystick_input_dev, ABS_HAT0X, hat_x);
-    // input_report_abs(joystick_input_dev, ABS_HAT0Y, hat_y);
-    // Report analog values for ABS_X and ABS_Y for compatibility with games
-    // expecting analog input and robotic arm
+    hat_x = right - left; // -1 = left, 1 = right, 0 = neutral
+    hat_y =
+        up -
+	down; 
+
     input_report_abs(joystick_input_dev, ABS_X,
                      hat_x); // Lower 8 bits for X
     input_report_abs(joystick_input_dev, ABS_Y,
