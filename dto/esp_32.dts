@@ -17,8 +17,8 @@
 		};
 	};
 	__overrides__ {
-        latch_pin   = <&joy_stick>, "latch-gpios:4";
-        data_pin  = <&joy_stick>, "data-gpios:4";
-	pwm_period = <&joy_stick>, "pwm:8";
+        latch_pin   = <&joystick_pwm>, "latch-gpios:4";
+        data_pin  = <&joystick_pwm>, "data-gpios:4";
+	pwm_period = <&joystick_pwm>, "pwms:8";
     };
 };
