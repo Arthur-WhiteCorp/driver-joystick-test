@@ -10,6 +10,8 @@
 const int PIN_LATCH = 2; // entrada
 const int PIN_CLOCK = 4; // entrada
 const int PIN_DATA  = 5;  // saída
+int latch_number = 0;
+
 
 // Botões digitais (GND = pressionado)
 const int PIN_A      = 32;
@@ -123,6 +125,7 @@ void IRAM_ATTR isrLatch()
   int v = digitalRead(PIN_LATCH);
   if (lastLatch == LOW && v == HIGH) {
     shift_reg = buildSnapshot();
+    latch_number++;
     shift_idx = 0;
     writeDataBit((shift_reg >> 0) & 0x1);
   }
@@ -147,6 +150,7 @@ void IRAM_ATTR isrClock()
 
 void setup()
 {
+  Serial.begin(9600);
   // Protocolo
   pinMode(PIN_LATCH, INPUT_PULLUP);
   pinMode(PIN_CLOCK, INPUT_PULLUP);
@@ -205,6 +209,6 @@ void loop()
   }
 
   updateDpadFromAxes(ax, ay);
-
+  Serial.println(latch_number);
   delay(1);
 }

@@ -93,25 +93,25 @@ static int device_tree_parse(struct device *dev) {
     dev_err(dev, "message - property is not present!\n");
     return -1;
   }
-  if (!device_property_present(dev, "pwm")) {
-    dev_err(dev, "pwms - property is not present!\n");
+  if (!device_property_present(dev, "pwms")) {
+    dev_err(dev, "pwm - property is not present!\n");
     return -1;
   }
-  if (!device_property_present(dev, "pwm-name")) {
+  if (!device_property_present(dev, "pwm-names")) {
     dev_err(dev, "pwm-names - property is not present!\n");
     return -1;
   }
 
 
 
-  status = device_property_read_u32_array(dev, "pwm", clk_pwm, 4); // returns 0 if sucessfull
+  status = device_property_read_u32_array(dev, "pwms", clk_pwm, 4); // returns 0 if sucessfull
   if (status) {
     dev_err(dev, "pwm - error reading property! \n");
     return status;
   }
   status = device_property_read_u32_array(dev, "latch-gpios", latch_gpio, 3);
   if (status) {
-    dev_err(dev, "clk-gpios - error reading property! \n");
+    dev_err(dev, "latch-gpios - error reading property! \n");
     return status;
   }
   status = device_property_read_u32_array(dev, "data-gpios", data_gpio, 3);
@@ -211,7 +211,7 @@ static int joystick_probe(struct platform_device *device) {
     return status;
   }
 
-  pwm_clk = devm_pwm_get(dev, "pwm");
+  pwm_clk = devm_pwm_get(dev, "clk");
   if (IS_ERR(pwm_clk)) {
     dev_err(dev, "failed to get pwm clock\n");
     return -1;
