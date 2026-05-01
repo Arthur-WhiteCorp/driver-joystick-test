@@ -5,7 +5,7 @@
 	fragment@0 {
 		target-path = "/soc";
 		__overlay__ {
-			joy_stick:  joystick@0 {
+        		joystick_pwm: joystick-pwm@0 {
 				compatible = "TCC,Kronos";
  				pwms = <&pwm 0 5000000 0>; // period of 5 mili
 				pwm-names = "clk"; // clk uses pwm
