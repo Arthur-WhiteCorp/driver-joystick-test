@@ -26,7 +26,7 @@ static struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
 static struct gpio_desc *data, *latch;        // gpios
 static struct pwm_device *pwm_clk;    // clock using pwm
-static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 250000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = false, .usage_power = false};
+static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 2500000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = false, .usage_power = false};
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
