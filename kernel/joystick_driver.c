@@ -159,6 +159,7 @@ static u16 nesjoy_read_bits(void) {
     bits |= ((v == 0) ? 1 : 0) << i;
     if (i == 0) {
     	pwm_enable(pwm_clk);
+	mdelay(1);
     }
   }
   pwm_disable(pwm_clk);
