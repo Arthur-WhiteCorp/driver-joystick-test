@@ -148,17 +148,18 @@ static u16 nesjoy_read_bits(void) {
   gpiod_set_value_cansleep(latch, 0);
   mdelay(1);
   
-  pwm_enable(pwm_clk);
   // Primeiro bit já disponível, depois avançar com clock
   for (i = 0; i < NES_BITS; i++) {
     int v = gpiod_get_value_cansleep(data);
     if (v < 0){
       v = 1; // em caso de erro, trata como solto
     }
+    mdelay(5);
     // 0 = pressed no fio, armazenamos pressed = 1
     bits |= ((v == 0) ? 1 : 0) << i;
-
-    mdelay(5);
+    if (i == 0) {
+    	pwm_enable(pwm_clk);
+    }
   }
   pwm_disable(pwm_clk);
   return bits;
