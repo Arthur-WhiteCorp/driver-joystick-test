@@ -141,26 +141,32 @@ static int device_tree_parse(struct device *dev) {
 static u16 nesjoy_read_bits(void) {
   int i;
   u16 bits = 0;
+  int v = 0;
 
   // Pulso de LATCH: alto para carregar o shift register no "controle"
   gpiod_set_value_cansleep(latch, 1);
-  mdelay(1);
+  mdelay(5);
   gpiod_set_value_cansleep(latch, 0);
-  mdelay(1);
-  
+  mdelay(3);
   // Primeiro bit já disponível, depois avançar com clock
-  for (i = 0; i < NES_BITS; i++) {
-    int v = gpiod_get_value_cansleep(data);
+  v = gpiod_get_value_cansleep(data);
+  if (v < 0){
+      v = 1; // em caso de erro, trata como solto
+  }
+    
+  bits |= ((v==0) ? 1 : 0); // 0 = pressed no fio, armazenamos pressed = 1
+
+  
+  pwm_enable(pwm_clk);
+  mdelay(1);
+  for (i = 1; i < NES_BITS; i++) {
+    v = gpiod_get_value_cansleep(data);
     if (v < 0){
       v = 1; // em caso de erro, trata como solto
     }
-    mdelay(5);
-    // 0 = pressed no fio, armazenamos pressed = 1
     bits |= ((v == 0) ? 1 : 0) << i;
-    if (i == 0) {
-    	pwm_enable(pwm_clk);
-	mdelay(1);
-    }
+
+    mdelay(5);
   }
   pwm_disable(pwm_clk);
   return bits;
