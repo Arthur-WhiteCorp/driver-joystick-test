@@ -26,7 +26,7 @@ static struct task_struct *thread;
 static struct input_dev *joystick_input_dev; //  Input device file
 static struct gpio_desc *data, *latch;        // gpios
 static struct pwm_device *pwm_clk;    // clock using pwm
-static struct pwm_state state = {.period = 5000000ull, .duty_cycle = 2500000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = false, .usage_power = false};
+static struct pwm_state state = {.period = 2000000ull, .duty_cycle = 1000000ull, .polarity = PWM_POLARITY_NORMAL, .enabled = false, .usage_power = false};
 
 // Ordem (bit0→bit10): A, B, Select, Start, Up, Down, Left, Right, C, D, Push
 static const unsigned int nes_keycodes[NES_BITS] = {
@@ -145,9 +145,9 @@ static u16 nesjoy_read_bits(void) {
 
   // Pulso de LATCH: alto para carregar o shift register no "controle"
   gpiod_set_value_cansleep(latch, 1);
-  mdelay(5);
+  mdelay(2);
   gpiod_set_value_cansleep(latch, 0);
-  mdelay(3);
+  mdelay(1);
   // Primeiro bit já disponível, depois avançar com clock
   v = gpiod_get_value_cansleep(data);
   if (v < 0){
@@ -158,7 +158,7 @@ static u16 nesjoy_read_bits(void) {
 
   
   pwm_enable(pwm_clk);
-  mdelay(1);
+  udelay(700);
   for (i = 1; i < NES_BITS; i++) {
     v = gpiod_get_value_cansleep(data);
     if (v < 0){
@@ -166,7 +166,7 @@ static u16 nesjoy_read_bits(void) {
     }
     bits |= ((v == 0) ? 1 : 0) << i;
 
-    mdelay(5);
+    mdelay(2);
   }
   pwm_disable(pwm_clk);
   return bits;
