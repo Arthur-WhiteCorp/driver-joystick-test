@@ -1,7 +1,8 @@
-# Linux Kernel Module – Driver de Joystick (Exemplo)
+# Linux Kernel Module – Driver de Joystick
 
 Este repositório contém um **módulo de kernel Linux (LKM)** desenvolvido para fins de estudo.  
 O projeto já vem configurado para facilitar **compilação**, **carregamento** e **uso em editores** (VS Code / Neovim).
+Para acessar a versão bit banging do driver vá para a branch "gpio_version" para a versão pwm vá para a branch "pwm_dev"
 
 ---
 
